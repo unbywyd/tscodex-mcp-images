@@ -1,0 +1,19 @@
+{
+  "source": "pexels",
+  "provider": "pexels",
+  "photoId": 2011717,
+  "photographer": "Josh Sorenson",
+  "photographerUrl": "https://www.pexels.com/@joshsorenson",
+  "photoUrl": "https://www.pexels.com/photo/white-crane-on-body-of-water-2011717/",
+  "downloadedAt": "2025-11-27T07:00:32.711Z",
+  "filePath": "D:\\MyProjects\\tscodex\\packages\\cursor-stock-images-mcp-v2\\public\\images\\stock\\crane.jpg",
+  "format": "webp",
+  "width": 1920,
+  "height": 1280,
+  "quality": 85,
+  "attribution": {
+    "text": "Photo by Josh Sorenson on Pexels",
+    "html": "<a href=\"https://www.pexels.com/photo/white-crane-on-body-of-water-2011717/\">Photo by Josh Sorenson on Pexels</a>",
+    "markdown": "[Photo by Josh Sorenson on Pexels](https://www.pexels.com/photo/white-crane-on-body-of-water-2011717/)"
+  }
+}

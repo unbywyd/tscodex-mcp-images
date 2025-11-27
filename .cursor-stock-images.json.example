@@ -1,0 +1,11 @@
+{
+  "root": ".",
+  "assetsDir": "public/images/stock",
+  "defaultProvider": "pexels",
+  "defaultFormat": "webp",
+  "defaultMaxWidth": 1920,
+  "defaultQuality": 80,
+  "saveMetadata": true,
+  "embedExif": false
+}
+

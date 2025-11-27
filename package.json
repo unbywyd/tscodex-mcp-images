@@ -1,0 +1,74 @@
+{
+  "name": "@tscodex/mcp-images",
+  "version": "0.2.0",
+  "description": "MCP server with comprehensive image processing tools - resize, crop, optimize, extract colors, apply filters, create placeholders and more. Optional integration with Pexels and Pixabay for image search and download.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "mcp-images": "./dist/index.js"
+  },
+  "preferGlobal": false,
+  "private": false,
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "meta": "node dist/index.js --meta",
+    "prepublishOnly": "npm run build",
+    "update-sdk": "npm cache clean --force && npm uninstall @tscodex/mcp-sdk && npm install --legacy-peer-deps github:unbywyd/tscodex-mcp-sdk#master"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "tscodex-mcp-provider",
+    "mcp-gateway",
+    "model-context-protocol",
+    "cursor",
+    "ai",
+    "npx",
+    "pexels",
+    "pixabay",
+    "images",
+    "photos"
+  ],
+  "author": {
+    "name": "unbywyd",
+    "url": "https://github.com/unbywyd"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unbywyd/tscodex-mcp-images.git"
+  },
+  "bugs": {
+    "url": "https://github.com/unbywyd/tscodex-mcp-images/issues"
+  },
+  "homepage": "https://github.com/unbywyd/tscodex-mcp-images#readme",
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.41",
+    "@tscodex/mcp-sdk": "github:unbywyd/tscodex-mcp-sdk#master",
+    "node-fetch": "^3.3.2",
+    "node-vibrant": "^4.0.3",
+    "picocolors": "^1.1.1",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/sharp": "^0.32.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ]
+}

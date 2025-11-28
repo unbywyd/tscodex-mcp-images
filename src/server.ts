@@ -29,46 +29,46 @@ type Roles = 'User';
  */
 export async function createServer() {
   const server = new McpServer<Config, Roles, Session>({
-    name: '@tscodex/mcp-images',
+    name: 'mcp-images',
     version: '0.2.0',
-    description: 'MCP server for image processing and stock images',
+    description: 'MCP server for comprehensive image processing, stock image search, and AI image generation. Provides tools for resizing, cropping, optimizing, converting formats (WebP, JPEG, PNG, AVIF), applying filters, rotating, watermarking, and creating placeholders. Integrates with Pexels and Pixabay for stock image search and download. Supports AI image generation via OpenAI DALL-E. Includes color extraction and palette generation from images.',
     configSchema: ConfigSchema,
-    configFile: '.cursor-stock-images.json', // Default config file path
+    configFile: '.mcp-images.json', // Default config file path
     loadConfig: loadConfigForSDK,
-    
+
     // Authentication configuration
     auth: {
       sessionSchema: SessionSchema,
       requireSession: false, // Session is optional - tools can work without auth
-      
+
       // Load session from token - extract only email and fullName, ignore other fields
       loadSession: async (token: string, context) => {
         try {
           // Try to parse token as JSON
           const tokenData = JSON.parse(token);
-          
+
           // Extract only email and fullName, ignore other fields
           const session: Session = {
             email: tokenData.email
           };
-          
+
           // Add fullName only if it exists
           if (tokenData.fullName && typeof tokenData.fullName === 'string') {
             session.fullName = tokenData.fullName;
           }
-          
+
           // Validate that email exists
           if (!session.email || typeof session.email !== 'string') {
             throw new Error('Email is required in session token');
           }
-          
+
           return session;
         } catch (error) {
           // If token is not JSON or parsing failed, throw error
           throw new Error(`Invalid session token: ${error instanceof Error ? error.message : String(error)}`);
         }
       },
-      
+
       // Single role: User
       roles: {
         User: async (session, context) => {
@@ -77,7 +77,7 @@ export async function createServer() {
         }
       }
     },
-    
+
     // SDK will disable logger automatically if --meta flag is present
     logger: {
       info: (msg: string, ...args: unknown[]) => console.log(`[INFO] ${msg}`, ...args),

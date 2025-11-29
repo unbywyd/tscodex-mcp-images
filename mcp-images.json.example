@@ -1,6 +1,4 @@
 {
-  "root": ".",
-  "assetsDir": "public/images/stock",
   "defaultProvider": "pexels",
   "defaultFormat": "webp",
   "defaultMaxWidth": 1920,

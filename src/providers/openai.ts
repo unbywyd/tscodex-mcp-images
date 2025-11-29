@@ -1,12 +1,12 @@
 import fetch from 'node-fetch';
-import { ImageProvider, UniversalPhoto, UniversalSearchResponse, SearchOptions, OpenAIImageGenerationResponse, ImageProviderInterface } from '../types.js';
+import { EImageProvider, UniversalPhoto, UniversalSearchResponse, SearchOptions, OpenAIImageGenerationResponse, ImageProviderInterface } from '../types.js';
 import { sanitizeError } from '../utils.js';
 
 /**
  * OpenAI Provider - implementation of interface for OpenAI DALL-E API
  */
 export class OpenAIProvider implements ImageProviderInterface {
-  name = ImageProvider.OPENAI;
+  name = EImageProvider.OPENAI;
   private apiKey: string;
   private organizationId?: string;
   private baseUrl = 'https://api.openai.com/v1';
@@ -100,7 +100,7 @@ export class OpenAIProvider implements ImageProviderInterface {
 
     return {
       id: numericId,
-      provider: ImageProvider.OPENAI,
+      provider: EImageProvider.OPENAI,
       photographer: 'OpenAI DALL-E',
       photographerUrl: 'https://openai.com/dall-e-2',
       url: url,
@@ -238,7 +238,7 @@ export class OpenAIProvider implements ImageProviderInterface {
 
         return {
           photos: [photo],
-          provider: ImageProvider.OPENAI,
+          provider: EImageProvider.OPENAI,
           fallbackUsed: false,
           page: 1,
           perPage: 1,

@@ -1,7 +1,7 @@
 import sharp from 'sharp';
 import { writeFile, mkdir, readFile } from 'fs/promises';
 import { dirname, join, resolve } from 'path';
-import { UniversalPhoto, ImageFormat, ImageProvider } from './types.js';
+import { UniversalPhoto, ImageFormat, EImageProvider } from './types.js';
 import { Config } from './config.js';
 
 /**
@@ -83,7 +83,7 @@ export async function findProjectRoot(startPath: string = process.cwd()): Promis
 
   // startPath is an explicit path - use it directly
   const resolvedPath = resolve(startPath);
-  
+
   // Verify the path exists and is a directory
   try {
     const stats = await fs.stat(resolvedPath).catch(() => null);
@@ -99,23 +99,22 @@ export async function findProjectRoot(startPath: string = process.cwd()): Promis
 }
 
 /**
- * Create .cursor-stock-images.json config file in specified directory
+ * Create .mcp-images.json config file in specified directory
  */
 export async function createConfigFile(directory: string): Promise<void> {
   const path = await import('path');
   const fs = await import('fs/promises');
-  
-  const configPath = path.join(directory, '.cursor-stock-images.json');
+
+  const configPath = path.join(directory, '.mcp-images.json');
   const defaultConfig = {
     root: '.',
-    assetsDir: 'public/images/stock',
     defaultFormat: 'webp',
     defaultMaxWidth: 1920,
     defaultQuality: 80,
     saveMetadata: true,
     embedExif: false,
   };
-  
+
   await fs.writeFile(configPath, JSON.stringify(defaultConfig, null, 2), 'utf-8');
 }
 
@@ -142,7 +141,7 @@ export async function processAndSaveImage(
   height: number;
 }> {
   // Determine format
-  const format = determineFormat(targetPath, options.format, config.defaultFormat);
+  const format = determineFormat(targetPath, options.format, config.defaultFormat as ImageFormat);
 
   // Parse aspect ratio
   const targetAspectRatio = parseAspectRatio(options.aspectRatio);
@@ -231,7 +230,7 @@ export async function processAndSaveImage(
 
   // If embedExif option is enabled
   if (config.embedExif) {
-    const providerName = photo.provider === ImageProvider.PEXELS ? 'Pexels' : 'Pixabay';
+    const providerName = photo.provider === EImageProvider.PEXELS ? 'Pexels' : 'Pixabay';
     const attributionText = `Photo by ${photo.photographer} on ${providerName} - ${photo.url}`;
 
     sharpInstance = sharpInstance.withMetadata({
@@ -332,7 +331,7 @@ async function saveMetadataFile(
 
   await mkdir(metadataDir, { recursive: true });
 
-  const providerName = photo.provider === ImageProvider.PEXELS ? 'Pexels' : 'Pixabay';
+  const providerName = photo.provider === EImageProvider.PEXELS ? 'Pexels' : 'Pixabay';
 
   const metadata = {
     source: photo.provider,
@@ -365,16 +364,16 @@ async function saveMetadataFile(
 export async function imageToBase64(buffer: Buffer, mimeType: string = 'image/jpeg'): Promise<string> {
   // Optimize preview: reduce size and compress for smaller Base64
   const optimizedBuffer = await sharp(buffer)
-    .resize(400, 400, { 
-      fit: 'inside', 
-      withoutEnlargement: true 
+    .resize(400, 400, {
+      fit: 'inside',
+      withoutEnlargement: true
     })
-    .jpeg({ 
+    .jpeg({
       quality: 75,
-      mozjpeg: true 
+      mozjpeg: true
     })
     .toBuffer();
-  
+
   return optimizedBuffer.toString('base64');
 }
 
@@ -404,15 +403,15 @@ export async function processLocalImage(
   savedBytes: number;
 }> {
   const originalSize = imageBuffer.length;
-  
+
   // If circle needed, format must be PNG for transparency support
-  const format = options.circle 
+  const format = options.circle
     ? 'png' as ImageFormat
-    : determineFormat(targetPath, options.format, config.defaultFormat);
+    : determineFormat(targetPath, options.format, config.defaultFormat as ImageFormat);
 
   // Parse aspect ratio
   // For circle need square (1:1)
-  const targetAspectRatio = options.circle 
+  const targetAspectRatio = options.circle
     ? { width: 1, height: 1 }
     : parseAspectRatio(options.aspectRatio);
 
@@ -491,26 +490,26 @@ export async function processLocalImage(
     // Get dimensions after processing
     const tempBuffer = await sharpInstance.toBuffer();
     const tempMetadata = await sharp(tempBuffer).metadata();
-    
+
     if (!tempMetadata.width || !tempMetadata.height) {
       throw new Error('Unable to determine image dimensions');
     }
-    
+
     // Determine square size (minimum side)
     const size = Math.min(tempMetadata.width, tempMetadata.height);
-    
+
     // If image is not square, crop to square from center
     let squareBuffer: Buffer;
     if (tempMetadata.width !== tempMetadata.height) {
       const left = Math.max(0, Math.floor((tempMetadata.width - size) / 2));
       const top = Math.max(0, Math.floor((tempMetadata.height - size) / 2));
-      
+
       squareBuffer = await sharp(tempBuffer)
-        .extract({ 
-          left, 
-          top, 
-          width: Math.min(size, tempMetadata.width - left), 
-          height: Math.min(size, tempMetadata.height - top) 
+        .extract({
+          left,
+          top,
+          width: Math.min(size, tempMetadata.width - left),
+          height: Math.min(size, tempMetadata.height - top)
         })
         .resize(size, size, { fit: 'fill' })
         .toBuffer();
@@ -520,7 +519,7 @@ export async function processLocalImage(
         .resize(size, size, { fit: 'fill' })
         .toBuffer();
     }
-    
+
     // Create circular mask
     const radius = size / 2;
     const maskSvg = `
@@ -528,9 +527,9 @@ export async function processLocalImage(
         <circle cx="${radius}" cy="${radius}" r="${radius}" fill="white"/>
       </svg>
     `;
-    
+
     const maskBuffer = Buffer.from(maskSvg);
-    
+
     // Apply mask to create circular shape
     sharpInstance = sharp(squareBuffer)
       .composite([{
@@ -620,7 +619,7 @@ export async function analyzeImage(
   const size = imageBuffer.length;
   const sizeFormatted = formatFileSize(size);
   const aspectRatio = `${metadata.width}:${metadata.height}`;
-  
+
   const suggestions: string[] = [];
   let isOptimized = true;
 
@@ -701,7 +700,7 @@ export async function optimizeImage(
   const originalSize = imageBuffer.length;
   const metadata = await sharp(imageBuffer).metadata();
   const originalFormat = metadata.format?.toLowerCase() || 'unknown';
-  
+
   // Determine best format
   let bestFormat: ImageFormat = 'webp';
   if (metadata.hasAlpha) {
@@ -761,20 +760,20 @@ export async function createPlaceholderImage(
   width: number;
   height: number;
 }> {
-  const { 
-    width, 
-    height, 
-    backgroundColor = '#cccccc', 
-    textColor = '#666666', 
+  const {
+    width,
+    height,
+    backgroundColor = '#cccccc',
+    textColor = '#666666',
     format: formatParam,
     useImage = false,
     imageId,
     blur,
     grayscale,
   } = options;
-  
+
   // Determine format
-  const format = determineFormat(targetPath, formatParam, config.defaultFormat);
+  const format = determineFormat(targetPath as string, formatParam as ImageFormat, config.defaultFormat as ImageFormat);
 
   // Determine project root
   const projectRootResult = await findProjectRoot(config.root);
@@ -786,18 +785,18 @@ export async function createPlaceholderImage(
   // If need to use real image from Picsum
   if (useImage) {
     const fetch = (await import('node-fetch')).default;
-    
+
     // Build URL for Picsum
     let picsumUrl = 'https://picsum.photos/';
-    
+
     // If specific image ID is specified
     if (imageId !== undefined) {
       picsumUrl += `id/${imageId}/`;
     }
-    
+
     // Dimensions
     picsumUrl += `${width}/${height}`;
-    
+
     // Parameters
     const params: string[] = [];
     if (blur !== undefined && blur > 0) {
@@ -806,18 +805,18 @@ export async function createPlaceholderImage(
     if (grayscale) {
       params.push('grayscale');
     }
-    
+
     if (params.length > 0) {
       picsumUrl += `?${params.join('&')}`;
     }
-    
+
     // Add extension for needed format
     if (format === 'webp') {
       picsumUrl += '.webp';
     } else if (format === 'jpeg') {
       picsumUrl += '.jpg';
     }
-    
+
     try {
       const response = await fetch(picsumUrl);
       if (!response.ok) {
@@ -910,54 +909,54 @@ export async function createFavicon(
 }> {
   const projectRootResult = await findProjectRoot(config.root);
   const fullOutputDir = resolve(projectRootResult.root, outputDir);
-  
+
   // Standard favicon sizes
   const defaultSizes = [16, 32, 48, 180, 192, 512];
   const sizes = options.sizes || defaultSizes;
-  
+
   // Create directory if needed
   await mkdir(fullOutputDir, { recursive: true });
-  
+
   const files: Array<{ path: string; size: string; format: string }> = [];
   const htmlLinks: string[] = [];
-  
+
   // Get source image metadata
   const metadata = await sharp(imageBuffer).metadata();
   const originalWidth = metadata.width!;
   const originalHeight = metadata.height!;
-  
+
   // Crop to square if needed
   let squareBuffer = imageBuffer;
   if (originalWidth !== originalHeight) {
     const size = Math.min(originalWidth, originalHeight);
     const left = Math.floor((originalWidth - size) / 2);
     const top = Math.floor((originalHeight - size) / 2);
-    
+
     squareBuffer = await sharp(imageBuffer)
       .extract({ left, top, width: size, height: size })
       .toBuffer();
   }
-  
+
   // Generate each size
   for (const size of sizes) {
     const fileName = `favicon-${size}x${size}.png`;
     const filePath = resolve(fullOutputDir, fileName);
     const relativePath = `${outputDir}/${fileName}`.replace(/\\/g, '/'); // Normalize path for HTML
-    
+
     // Resize and save
     const faviconBuffer = await sharp(squareBuffer)
       .resize(size, size, { fit: 'fill' })
       .png({ compressionLevel: 9 })
       .toBuffer();
-    
+
     await writeFile(filePath, faviconBuffer);
-    
+
     files.push({
       path: relativePath,
       size: `${size}x${size}`,
       format: 'png',
     });
-    
+
     // Add corresponding HTML link
     if (size === 180) {
       htmlLinks.push(`<link rel="apple-touch-icon" sizes="${size}x${size}" href="${relativePath}">`);
@@ -965,28 +964,28 @@ export async function createFavicon(
       htmlLinks.push(`<link rel="icon" type="image/png" sizes="${size}x${size}" href="${relativePath}">`);
     }
   }
-  
+
   // Create main favicon.png (use 32x32 as main)
   // Sharp doesn't support true ICO format, so use PNG
   const favicon32Buffer = await sharp(squareBuffer)
     .resize(32, 32, { fit: 'fill' })
     .png({ compressionLevel: 9 })
     .toBuffer();
-  
+
   const faviconPath = resolve(fullOutputDir, 'favicon.png');
   await writeFile(faviconPath, favicon32Buffer);
-  
+
   const relativeFaviconPath = `${outputDir}/favicon.png`.replace(/\\/g, '/'); // Normalize path for HTML
   htmlLinks.unshift(`<link rel="icon" type="image/png" href="${relativeFaviconPath}">`);
-  
+
   // Add manifest for PWA (if sizes 192 and 512 are present)
   if (sizes.includes(192) && sizes.includes(512)) {
     htmlLinks.push(`<link rel="manifest" href="${outputDir}/site.webmanifest">`);
   }
-  
+
   // Build HTML code
   const htmlCode = htmlLinks.join('\n');
-  
+
   return {
     files,
     htmlCode,
@@ -997,11 +996,11 @@ export async function createFavicon(
 /**
  * Watermark positioning types
  */
-export type WatermarkPosition = 
-  | 'center' 
-  | 'top-left' 
-  | 'top-right' 
-  | 'bottom-left' 
+export type WatermarkPosition =
+  | 'center'
+  | 'top-left'
+  | 'top-right'
+  | 'bottom-left'
   | 'bottom-right'
   | 'custom';
 
@@ -1019,22 +1018,22 @@ export async function addWatermark(
     textColor?: string;
     fontSize?: number; // Font size in pixels
     fontFamily?: string;
-    
+
     // Image watermark
     watermarkImagePath?: string;
-    
+
     // Positioning
     position?: WatermarkPosition;
     x?: number; // Custom X coordinate (for position='custom')
     y?: number; // Custom Y coordinate (for position='custom')
-    
+
     // Size (for image watermark)
     size?: number; // Size in pixels
     sizePercent?: number; // Size as percentage of source image (0-100)
-    
+
     // Opacity
     opacity?: number; // 0-100 (0 = fully transparent, 100 = fully opaque)
-    
+
     // Output file format
     format?: ImageFormat;
   }
@@ -1047,7 +1046,7 @@ export async function addWatermark(
   const projectRootResult = await findProjectRoot(config.root);
   const fullImagePath = resolve(projectRootResult.root, imagePath);
   const fullOutputPath = resolve(projectRootResult.root, outputPath);
-  
+
   // Check if source image exists
   const fs = await import('fs/promises');
   try {
@@ -1055,25 +1054,25 @@ export async function addWatermark(
   } catch {
     throw new Error(`Source image not found: ${imagePath} (resolved to: ${fullImagePath})`);
   }
-  
+
   // Determine output file format
-  const format = determineFormat(outputPath, options.format, config.defaultFormat);
-  
+  const format = determineFormat(outputPath as string, options.format as ImageFormat, config.defaultFormat as ImageFormat);
+
   // Read source image
   const imageBuffer = await readFile(fullImagePath);
   const image = sharp(imageBuffer);
   const imageMetadata = await image.metadata();
   const imageWidth = imageMetadata.width!;
   const imageHeight = imageMetadata.height!;
-  
+
   // Default parameters
   const opacity = Math.max(0, Math.min(100, options.opacity ?? 50)) / 100; // 0-1
   const position = options.position || 'center';
-  
+
   let watermarkBuffer: Buffer;
   let watermarkWidth: number;
   let watermarkHeight: number;
-  
+
   // Create watermark (text or image)
   if (options.text) {
     // Text watermark
@@ -1081,16 +1080,16 @@ export async function addWatermark(
     const textColor = options.textColor || '#ffffff';
     const fontSize = options.fontSize || Math.min(imageWidth, imageHeight) / 20;
     const fontFamily = options.fontFamily || 'Arial, sans-serif';
-    
+
     // Calculate text size (approximately)
     // Use SVG to create text watermark
     const padding = fontSize * 0.5;
     const estimatedTextWidth = text.length * fontSize * 0.6; // Approximate text width
     const estimatedTextHeight = fontSize * 1.2;
-    
+
     watermarkWidth = Math.ceil(estimatedTextWidth + padding * 2);
     watermarkHeight = Math.ceil(estimatedTextHeight + padding * 2);
-    
+
     // Create SVG with text
     const svg = `
       <svg width="${watermarkWidth}" height="${watermarkHeight}" xmlns="http://www.w3.org/2000/svg">
@@ -1108,24 +1107,24 @@ export async function addWatermark(
         </text>
       </svg>
     `;
-    
+
     watermarkBuffer = Buffer.from(svg);
   } else if (options.watermarkImagePath) {
     // Image watermark
     const fullWatermarkPath = resolve(projectRootResult.root, options.watermarkImagePath);
-    
+
     try {
       await fs.access(fullWatermarkPath);
     } catch {
       throw new Error(`Watermark image not found: ${options.watermarkImagePath} (resolved to: ${fullWatermarkPath})`);
     }
-    
+
     const watermarkImageBuffer = await readFile(fullWatermarkPath);
     const watermarkImage = sharp(watermarkImageBuffer);
     const watermarkMetadata = await watermarkImage.metadata();
     const originalWatermarkWidth = watermarkMetadata.width!;
     const originalWatermarkHeight = watermarkMetadata.height!;
-    
+
     // Determine watermark size
     if (options.size) {
       // Absolute size
@@ -1162,23 +1161,23 @@ export async function addWatermark(
         watermarkWidth = Math.round(defaultSize * aspectRatio);
       }
     }
-    
+
     // Resize watermark
     const resizedWatermarkBuffer = await watermarkImage
       .resize(watermarkWidth, watermarkHeight, { fit: 'inside', withoutEnlargement: true })
       .ensureAlpha()
       .png()
       .toBuffer();
-    
+
     // Get actual dimensions after resize (may differ due to fit: 'inside')
     const resizedMetadata = await sharp(resizedWatermarkBuffer).metadata();
     const actualWidth = resizedMetadata.width!;
     const actualHeight = resizedMetadata.height!;
-    
+
     // Update dimensions for further use
     watermarkWidth = actualWidth;
     watermarkHeight = actualHeight;
-    
+
     // Apply opacity if needed
     if (opacity < 1) {
       // Use more efficient method via composite with SVG transparency mask
@@ -1188,7 +1187,7 @@ export async function addWatermark(
           <rect width="100%" height="100%" fill="white" opacity="${opacity}"/>
         </svg>
       `;
-      
+
       watermarkBuffer = await sharp(resizedWatermarkBuffer)
         .composite([{
           input: Buffer.from(alphaSvg),
@@ -1203,11 +1202,11 @@ export async function addWatermark(
   } else {
     throw new Error('Either text or watermarkImagePath must be provided');
   }
-  
+
   // Calculate watermark position
   let left: number;
   let top: number;
-  
+
   switch (position) {
     case 'center':
       left = Math.floor((imageWidth - watermarkWidth) / 2);
@@ -1237,14 +1236,14 @@ export async function addWatermark(
       left = Math.floor((imageWidth - watermarkWidth) / 2);
       top = Math.floor((imageHeight - watermarkHeight) / 2);
   }
-  
+
   // Ensure position doesn't go out of bounds
   left = Math.max(0, Math.min(left, imageWidth - watermarkWidth));
   top = Math.max(0, Math.min(top, imageHeight - watermarkHeight));
-  
+
   // Apply watermark
   let processedBuffer: Buffer;
-  
+
   if (options.text) {
     // For text watermark use composite
     processedBuffer = await image
@@ -1268,17 +1267,17 @@ export async function addWatermark(
       .toFormat(format)
       .toBuffer();
   }
-  
+
   // Create directory if needed
   const fileDir = dirname(fullOutputPath);
   await mkdir(fileDir, { recursive: true });
-  
+
   // Save image
   await writeFile(fullOutputPath, processedBuffer);
-  
+
   // Get final dimensions
   const finalMetadata = await sharp(processedBuffer).metadata();
-  
+
   return {
     filePath: fullOutputPath,
     format,
@@ -1298,16 +1297,16 @@ export async function applyFilters(
     // Blur and sharpen
     blur?: number;        // 0-1000, blur (sigma)
     sharpen?: number;     // 0-1000, sharpen (sigma)
-    
+
     // Color effects
     grayscale?: boolean;  // Grayscale
     sepia?: boolean;      // Sepia effect
-    
+
     // Color correction
     brightness?: number;  // -100 to 100 (0 = no change, 100 = maximum brightness)
     contrast?: number;    // -100 to 100 (0 = no change, 100 = maximum contrast)
     saturation?: number;  // -100 to 100 (0 = no change, 100 = maximum saturation)
-    
+
     // Output file format
     format?: ImageFormat;
   }
@@ -1321,7 +1320,7 @@ export async function applyFilters(
   const projectRootResult = await findProjectRoot(config.root);
   const fullImagePath = resolve(projectRootResult.root, imagePath);
   const fullOutputPath = resolve(projectRootResult.root, outputPath);
-  
+
   // Check if source image exists
   const fs = await import('fs/promises');
   try {
@@ -1329,41 +1328,41 @@ export async function applyFilters(
   } catch {
     throw new Error(`Source image not found: ${imagePath} (resolved to: ${fullImagePath})`);
   }
-  
+
   // Determine output file format
-  const format = determineFormat(outputPath, options.format, config.defaultFormat);
-  
+  const format = determineFormat(outputPath as string, options.format as ImageFormat, config.defaultFormat as ImageFormat);
+
   // Read source image
   const imageBuffer = await readFile(fullImagePath);
   let image = sharp(imageBuffer);
-  
+
   const appliedFilters: string[] = [];
-  
+
   // Get metadata once for all operations
   const metadata = await image.metadata();
   const width = metadata.width!;
   const height = metadata.height!;
-  
+
   // Apply blur
   if (options.blur !== undefined && options.blur > 0) {
     const blurValue = Math.max(0.3, Math.min(1000, options.blur));
     image = image.blur(blurValue);
     appliedFilters.push(`blur(${blurValue.toFixed(1)})`);
   }
-  
+
   // Apply sharpen
   if (options.sharpen !== undefined && options.sharpen > 0) {
     const sharpenValue = Math.max(0.3, Math.min(1000, options.sharpen));
     image = image.sharpen(sharpenValue);
     appliedFilters.push(`sharpen(${sharpenValue.toFixed(1)})`);
   }
-  
+
   // Apply grayscale
   if (options.grayscale) {
     image = image.greyscale();
     appliedFilters.push('grayscale');
   }
-  
+
   // Apply sepia
   if (options.sepia) {
     // Sepia effect via composite with semi-transparent brown layer
@@ -1373,7 +1372,7 @@ export async function applyFilters(
         <rect width="100%" height="100%" fill="#704214" opacity="0.4"/>
       </svg>
     `;
-    
+
     // First apply grayscale, then add brown tint
     image = image
       .greyscale()
@@ -1383,28 +1382,28 @@ export async function applyFilters(
       }]);
     appliedFilters.push('sepia');
   }
-  
+
   // Apply color correction (brightness, contrast, saturation)
   const brightness = options.brightness !== undefined ? options.brightness : 0;
   const contrast = options.contrast !== undefined ? options.contrast : 0;
   const saturation = options.saturation !== undefined ? options.saturation : 0;
-  
+
   if (brightness !== 0 || contrast !== 0 || saturation !== 0) {
     // Sharp uses modulate for brightness and saturation
     // brightness: 1.0 = no change, 2.0 = 2 times brighter, 0.5 = 2 times darker
     // saturation: 1.0 = no change, 2.0 = 2 times more saturated, 0.0 = grayscale
     // For contrast use linear
-    
+
     const brightnessMultiplier = 1 + (brightness / 100); // -100 -> 0, 0 -> 1, 100 -> 2
     const saturationMultiplier = 1 + (saturation / 100); // -100 -> 0, 0 -> 1, 100 -> 2
-    
+
     // Apply brightness and saturation via modulate
     if (brightness !== 0 || saturation !== 0) {
       image = image.modulate({
         brightness: brightnessMultiplier,
         saturation: saturationMultiplier,
       });
-      
+
       if (brightness !== 0) {
         appliedFilters.push(`brightness(${brightness > 0 ? '+' : ''}${brightness})`);
       }
@@ -1412,7 +1411,7 @@ export async function applyFilters(
         appliedFilters.push(`saturation(${saturation > 0 ? '+' : ''}${saturation})`);
       }
     }
-    
+
     // Apply contrast via linear
     if (contrast !== 0) {
       // contrast: -100 -> very low contrast, 0 -> no change, 100 -> very high contrast
@@ -1421,27 +1420,27 @@ export async function applyFilters(
       //                when contrast = -100: a = 0.5, b = 0.25 (contrast reduction)
       const contrastFactor = 1 + (contrast / 100); // -100 -> 0, 0 -> 1, 100 -> 2
       const intercept = contrast < 0 ? 0.25 * (1 - contrastFactor) : -0.5 * (contrastFactor - 1);
-      
+
       image = image.linear(contrastFactor, intercept);
       appliedFilters.push(`contrast(${contrast > 0 ? '+' : ''}${contrast})`);
     }
   }
-  
+
   // Apply format and get buffer
   const processedBuffer = await image
     .toFormat(format)
     .toBuffer();
-  
+
   // Create directory if needed
   const fileDir = dirname(fullOutputPath);
   await mkdir(fileDir, { recursive: true });
-  
+
   // Save image
   await writeFile(fullOutputPath, processedBuffer);
-  
+
   // Get final dimensions
   const finalMetadata = await sharp(processedBuffer).metadata();
-  
+
   return {
     filePath: fullOutputPath,
     format,
@@ -1465,7 +1464,7 @@ export async function rotateImage(
     rotate90?: boolean;   // Rotate 90° clockwise
     rotate180?: boolean;  // Rotate 180°
     rotate270?: boolean;   // Rotate 270° (or -90°)
-    
+
     // Output file format
     format?: ImageFormat;
   }
@@ -1479,7 +1478,7 @@ export async function rotateImage(
   const projectRootResult = await findProjectRoot(config.root);
   const fullImagePath = resolve(projectRootResult.root, imagePath);
   const fullOutputPath = resolve(projectRootResult.root, outputPath);
-  
+
   // Check if source image exists
   const fs = await import('fs/promises');
   try {
@@ -1487,17 +1486,17 @@ export async function rotateImage(
   } catch {
     throw new Error(`Source image not found: ${imagePath} (resolved to: ${fullImagePath})`);
   }
-  
+
   // Determine output file format
-  const format = determineFormat(outputPath, options.format, config.defaultFormat);
-  
+  const format = determineFormat(outputPath as string, options.format as ImageFormat, config.defaultFormat as ImageFormat);
+
   // Read source image
   const imageBuffer = await readFile(fullImagePath);
   let image = sharp(imageBuffer);
-  
+
   // Determine rotation angle
   let angle: number = 0;
-  
+
   if (options.angle !== undefined) {
     // Arbitrary angle
     angle = options.angle % 360;
@@ -1514,27 +1513,27 @@ export async function rotateImage(
     // Default - no rotation
     angle = 0;
   }
-  
+
   // Apply rotation
   if (angle !== 0) {
     image = image.rotate(angle);
   }
-  
+
   // Apply format and get buffer
   const processedBuffer = await image
     .toFormat(format)
     .toBuffer();
-  
+
   // Create directory if needed
   const fileDir = dirname(fullOutputPath);
   await mkdir(fileDir, { recursive: true });
-  
+
   // Save image
   await writeFile(fullOutputPath, processedBuffer);
-  
+
   // Get final dimensions
   const finalMetadata = await sharp(processedBuffer).metadata();
-  
+
   return {
     filePath: fullOutputPath,
     format,
@@ -1557,7 +1556,7 @@ export async function cropImage(
     y: number;      // Y coordinate of top-left corner
     width: number;  // Crop width
     height: number; // Crop height
-    
+
     // Output file format
     format?: ImageFormat;
   }
@@ -1576,7 +1575,7 @@ export async function cropImage(
   const projectRootResult = await findProjectRoot(config.root);
   const fullImagePath = resolve(projectRootResult.root, imagePath);
   const fullOutputPath = resolve(projectRootResult.root, outputPath);
-  
+
   // Check if source image exists
   const fs = await import('fs/promises');
   try {
@@ -1584,25 +1583,25 @@ export async function cropImage(
   } catch {
     throw new Error(`Source image not found: ${imagePath} (resolved to: ${fullImagePath})`);
   }
-  
+
   // Determine output file format
-  const format = determineFormat(outputPath, options.format, config.defaultFormat);
-  
+  const format = determineFormat(outputPath as string, options.format as ImageFormat, config.defaultFormat as ImageFormat);
+
   // Read source image
   const imageBuffer = await readFile(fullImagePath);
   const image = sharp(imageBuffer);
-  
+
   // Get source image dimensions
   const metadata = await image.metadata();
   const imageWidth = metadata.width!;
   const imageHeight = metadata.height!;
-  
+
   // Validate coordinates and sizes
   const x = Math.max(0, Math.floor(options.x));
   const y = Math.max(0, Math.floor(options.y));
   const width = Math.max(1, Math.floor(options.width));
   const height = Math.max(1, Math.floor(options.height));
-  
+
   // Check if crop area does not exceed image boundaries
   if (x + width > imageWidth) {
     throw new Error(`Crop area exceeds image width: x(${x}) + width(${width}) > imageWidth(${imageWidth})`);
@@ -1610,7 +1609,7 @@ export async function cropImage(
   if (y + height > imageHeight) {
     throw new Error(`Crop area exceeds image height: y(${y}) + height(${height}) > imageHeight(${imageHeight})`);
   }
-  
+
   // Apply crop
   const processedBuffer = await image
     .extract({
@@ -1621,17 +1620,17 @@ export async function cropImage(
     })
     .toFormat(format)
     .toBuffer();
-  
+
   // Create directory if needed
   const fileDir = dirname(fullOutputPath);
   await mkdir(fileDir, { recursive: true });
-  
+
   // Save image
   await writeFile(fullOutputPath, processedBuffer);
-  
+
   // Get final dimensions
   const finalMetadata = await sharp(processedBuffer).metadata();
-  
+
   return {
     filePath: fullOutputPath,
     format,

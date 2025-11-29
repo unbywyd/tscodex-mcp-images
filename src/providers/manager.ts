@@ -1,4 +1,4 @@
-import { ImageProvider, ApiKeys, UniversalPhoto, UniversalSearchResponse, SearchOptions, ImageProviderInterface } from '../types.js';
+import { EImageProvider, ApiKeys, UniversalPhoto, UniversalSearchResponse, SearchOptions, ImageProviderInterface } from '../types.js';
 import { Config } from '../config.js';
 import { PexelsProvider } from './pexels.js';
 import { PixabayProvider } from './pixabay.js';
@@ -10,24 +10,24 @@ import { logger } from '../logger.js';
  * Provider manager with automatic fallback
  */
 export class ProviderManager {
-  private providers: Map<ImageProvider, ImageProviderInterface>;
-  private defaultProvider: ImageProvider;
+  private providers: Map<EImageProvider, ImageProviderInterface>;
+  private defaultProvider: EImageProvider;
   private apiKeys: ApiKeys; // API keys stored separately and not updated
 
   constructor(config: Config, apiKeys: ApiKeys) {
     this.providers = new Map();
-    this.defaultProvider = config.defaultProvider as ImageProvider;
+    this.defaultProvider = config.defaultProvider as EImageProvider;
     this.apiKeys = apiKeys; // Store keys separately
 
     // Initialize available providers
     if (apiKeys.pexelsApiKey) {
-      this.providers.set(ImageProvider.PEXELS, new PexelsProvider(apiKeys.pexelsApiKey));
+      this.providers.set(EImageProvider.PEXELS, new PexelsProvider(apiKeys.pexelsApiKey));
     }
     if (apiKeys.pixabayApiKey) {
-      this.providers.set(ImageProvider.PIXABAY, new PixabayProvider(apiKeys.pixabayApiKey));
+      this.providers.set(EImageProvider.PIXABAY, new PixabayProvider(apiKeys.pixabayApiKey));
     }
     if (apiKeys.openaiApiKey) {
-      this.providers.set(ImageProvider.OPENAI, new OpenAIProvider(apiKeys.openaiApiKey, apiKeys.openaiOrganizationId));
+      this.providers.set(EImageProvider.OPENAI, new OpenAIProvider(apiKeys.openaiApiKey, apiKeys.openaiOrganizationId));
     }
   }
 
@@ -39,9 +39,9 @@ export class ProviderManager {
     pixabay: { configured: boolean; valid: boolean; error?: string };
     openai: { configured: boolean; valid: boolean; error?: string };
   }> {
-    const pexelsProvider = this.providers.get(ImageProvider.PEXELS);
-    const pixabayProvider = this.providers.get(ImageProvider.PIXABAY);
-    const openaiProvider = this.providers.get(ImageProvider.OPENAI);
+    const pexelsProvider = this.providers.get(EImageProvider.PEXELS);
+    const pixabayProvider = this.providers.get(EImageProvider.PIXABAY);
+    const openaiProvider = this.providers.get(EImageProvider.OPENAI);
 
     const pexelsStatus = pexelsProvider 
       ? await (pexelsProvider as any).validateApiKey()
@@ -79,26 +79,26 @@ export class ProviderManager {
    * API keys are not updated - they remain unchanged after initialization
    */
   updateConfig(newConfig: Config): void {
-    this.defaultProvider = newConfig.defaultProvider as ImageProvider;
+    this.defaultProvider = newConfig.defaultProvider as EImageProvider;
     // API keys are not updated - they are stored separately and not accessible via MCP
   }
 
   /**
    * Get provider by request (for search - excludes OpenAI)
    */
-  private getProviderInstance(requestedProvider: ImageProvider): ImageProviderInterface | null {
-    let provider: ImageProvider = requestedProvider;
+  private getProviderInstance(requestedProvider: EImageProvider): ImageProviderInterface | null {
+    let provider: EImageProvider = requestedProvider;
 
     // Determine provider
-    if (provider === ImageProvider.AUTO) {
-      provider = this.defaultProvider === ImageProvider.AUTO
-        ? ImageProvider.PEXELS  // Default start with Pexels
+    if (provider === EImageProvider.AUTO) {
+      provider = this.defaultProvider === EImageProvider.AUTO
+        ? EImageProvider.PEXELS  // Default start with Pexels
         : this.defaultProvider;
     }
 
     // OpenAI is not used for search - only for generation
     // If OpenAI is requested for search, this is an error
-    if (provider === ImageProvider.OPENAI) {
+    if (provider === EImageProvider.OPENAI) {
       return null; // OpenAI is not available for search
     }
 
@@ -114,21 +114,21 @@ export class ProviderManager {
    * Get OpenAI provider (for generation only)
    */
   getOpenAIProvider(): ImageProviderInterface | null {
-    return this.providers.get(ImageProvider.OPENAI) || null;
+    return this.providers.get(EImageProvider.OPENAI) || null;
   }
 
   /**
    * Get fallback provider
    */
-  private getFallbackProvider(currentProvider: ImageProvider): ImageProviderInterface | null {
+  private getFallbackProvider(currentProvider: EImageProvider): ImageProviderInterface | null {
     // OpenAI doesn't support fallback, as it's generation, not search
-    if (currentProvider === ImageProvider.OPENAI) {
+    if (currentProvider === EImageProvider.OPENAI) {
       return null;
     }
 
-    const fallbackProvider = currentProvider === ImageProvider.PEXELS
-      ? ImageProvider.PIXABAY
-      : ImageProvider.PEXELS;
+    const fallbackProvider = currentProvider === EImageProvider.PEXELS
+      ? EImageProvider.PIXABAY
+      : EImageProvider.PEXELS;
 
     const fallbackInstance = this.providers.get(fallbackProvider);
     if (fallbackInstance && fallbackInstance.isAvailable()) {
@@ -144,11 +144,11 @@ export class ProviderManager {
   async searchWithFallback(
     query: string,
     options: SearchOptions = {},
-    requestedProvider: ImageProvider = ImageProvider.AUTO
+    requestedProvider: EImageProvider = EImageProvider.AUTO
   ): Promise<UniversalSearchResponse> {
-    let provider = requestedProvider === ImageProvider.AUTO
-      ? this.defaultProvider === ImageProvider.AUTO
-        ? ImageProvider.PEXELS
+    let provider = requestedProvider === EImageProvider.AUTO
+      ? this.defaultProvider === EImageProvider.AUTO
+        ? EImageProvider.PEXELS
         : this.defaultProvider
       : requestedProvider;
 
@@ -161,7 +161,7 @@ export class ProviderManager {
       // If primary provider is unavailable, try fallback
       const fallbackInstance = this.getFallbackProvider(provider);
       if (fallbackInstance) {
-        provider = fallbackInstance.name as ImageProvider.PEXELS | ImageProvider.PIXABAY;
+        provider = fallbackInstance.name as EImageProvider.PEXELS | EImageProvider.PIXABAY;
         fallbackUsed = true;
       } else {
         throw new Error(`No available providers. Requested: ${requestedProvider}`);
@@ -181,13 +181,13 @@ export class ProviderManager {
           // - Always, if "auto" was requested or defaultProvider is "auto"
           // - Also, if primary provider is unavailable (no API key or initialization error)
           // - BUT: OpenAI doesn't support fallback, as it's generation, not search
-          if (provider === ImageProvider.OPENAI) {
+          if (provider === EImageProvider.OPENAI) {
             // For OpenAI don't do fallback, just throw error
             throw lastError;
           }
           
           const fallbackInstance = this.getFallbackProvider(provider);
-          if (fallbackInstance && (requestedProvider === ImageProvider.AUTO || this.defaultProvider === ImageProvider.AUTO)) {
+          if (fallbackInstance && (requestedProvider === EImageProvider.AUTO || this.defaultProvider === EImageProvider.AUTO)) {
             try {
               const result = await fallbackInstance.search(query, options);
               return { ...result, provider: fallbackInstance.name, fallbackUsed: true };
@@ -222,12 +222,12 @@ export class ProviderManager {
    */
   async getPhotoWithFallback(
     photoId: number,
-    requestedProvider: ImageProvider = ImageProvider.AUTO
-  ): Promise<{ photo: UniversalPhoto; provider: ImageProvider; fallbackUsed: boolean }> {
+    requestedProvider: EImageProvider = EImageProvider.AUTO
+  ): Promise<{ photo: UniversalPhoto; provider: EImageProvider; fallbackUsed: boolean }> {
     logger.info(`[ProviderManager] getPhotoWithFallback: photoId=${photoId}, requestedProvider=${requestedProvider}`);
-    let provider = requestedProvider === ImageProvider.AUTO
-      ? this.defaultProvider === ImageProvider.AUTO
-        ? ImageProvider.PEXELS
+    let provider = requestedProvider === EImageProvider.AUTO
+      ? this.defaultProvider === EImageProvider.AUTO
+        ? EImageProvider.PEXELS
         : this.defaultProvider
       : requestedProvider;
 
@@ -241,7 +241,7 @@ export class ProviderManager {
       // If primary provider is unavailable, try fallback
       const fallbackInstance = this.getFallbackProvider(provider);
       if (fallbackInstance) {
-        provider = fallbackInstance.name as ImageProvider.PEXELS | ImageProvider.PIXABAY;
+        provider = fallbackInstance.name as EImageProvider.PEXELS | EImageProvider.PIXABAY;
         fallbackUsed = true;
       } else {
         throw new Error(`No available providers. Requested: ${requestedProvider}`);
@@ -258,7 +258,7 @@ export class ProviderManager {
 
         // Fallback to another provider (only if "auto" was requested)
         // IMPORTANT: On fallback ID may not match, so fallback works only for "auto"
-        if (requestedProvider === ImageProvider.AUTO || this.defaultProvider === ImageProvider.AUTO) {
+        if (requestedProvider === EImageProvider.AUTO || this.defaultProvider === EImageProvider.AUTO) {
           const fallbackInstance = this.getFallbackProvider(provider);
           if (fallbackInstance) {
             // On fallback we can't use the same photoId, as IDs are provider-specific
@@ -315,9 +315,9 @@ export class ProviderManager {
     openai: { available: boolean; hasApiKey: boolean };
     anyAvailable: boolean;
   } {
-    const pexelsInstance = this.providers.get(ImageProvider.PEXELS);
-    const pixabayInstance = this.providers.get(ImageProvider.PIXABAY);
-    const openaiInstance = this.providers.get(ImageProvider.OPENAI);
+    const pexelsInstance = this.providers.get(EImageProvider.PEXELS);
+    const pixabayInstance = this.providers.get(EImageProvider.PIXABAY);
+    const openaiInstance = this.providers.get(EImageProvider.OPENAI);
     
     return {
       pexels: {

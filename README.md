@@ -2,6 +2,8 @@
 
 MCP (Model Context Protocol) server for comprehensive image processing, stock image search, and AI image generation. Built with TypeScript and Sharp for high-performance image manipulation.
 
+**Built on [@tscodex/mcp-sdk](https://www.npmjs.com/package/@tscodex/mcp-sdk)** - This project uses the official TSCodex MCP SDK for server infrastructure, authentication, configuration management, and protocol handling.
+
 ## Features
 
 - 🖼️ **Image Processing**: Resize, crop, optimize, convert formats, apply filters, rotate, watermark
@@ -63,12 +65,11 @@ npm start -- --host 127.0.0.1 --port 3000  # With custom host and port
 
 ### 2. Configuration
 
-Create a configuration file `.cursor-stock-images.json` in your project root:
+Create a configuration file `.mcp-images.json` in your project root:
 
 ```json
 {
   "root": ".",
-  "assetsDir": "public/images/stock",
   "defaultProvider": "pexels",
   "defaultFormat": "webp",
   "defaultMaxWidth": 1920,
@@ -80,8 +81,10 @@ Create a configuration file `.cursor-stock-images.json` in your project root:
 
 **Configuration Options:**
 
-- `root` (string, optional): Project root directory. Use `"."` to use `MCP_PROJECT_ROOT` environment variable
-- `assetsDir` (string, default: `"public/images/stock"`): Directory for storing downloaded images (relative to project root)
+- `root` (string, optional): Project root directory. 
+  - Use `"."` to use `MCP_PROJECT_ROOT` environment variable (requires env var to be set)
+  - Use absolute path (e.g., `"D:\\MyProjects\\my-project"` on Windows or `"/Users/username/my-project"` on macOS/Linux) for standalone server
+  - **Important:** When running as standalone server via CLI, specify `root` via `--root` parameter or set `MCP_PROJECT_ROOT` env var
 - `defaultProvider` (`"pexels"` | `"pixabay"` | `"openai"` | `"auto"`, default: `"auto"`): Default image provider for search
 - `defaultFormat` (`"webp"` | `"jpeg"` | `"png"` | `"avif"`, default: `"webp"`): Default image format for processing
 - `defaultMaxWidth` (number, default: `1920`): Default maximum width for images in pixels (1-10000)
@@ -90,6 +93,13 @@ Create a configuration file `.cursor-stock-images.json` in your project root:
 - `embedExif` (boolean, default: `false`): Embed metadata in EXIF data via Sharp
 
 ### 3. API Keys (Secrets)
+
+**⚠️ Security Note:** API keys are stored as **secrets** (environment variables with `SECRET_` prefix) instead of in the configuration file. This is more secure because:
+
+- **Secrets are not committed to version control** - Configuration files (`.mcp-images.json`) can be accidentally committed to Git, exposing your API keys
+- **Environment variables are process-scoped** - They exist only in the running process and are not persisted to disk
+- **Better separation of concerns** - Configuration (settings) vs Secrets (credentials) are kept separate
+- **Compliance with security best practices** - Follows the principle of never storing credentials in plain text files
 
 API keys are provided via environment variables with `SECRET_` prefix:
 
@@ -115,8 +125,10 @@ export SECRET_OPENAI_ORGANIZATION_ID=your_org_id
 
 ### 4. Running with Configuration
 
+**Important:** When running as a standalone server via CLI, you **must** specify the project root path using `--root` parameter or `MCP_PROJECT_ROOT` environment variable. This tells the server where your project files are located.
+
 ```bash
-# With config file
+# With config file (root can be specified in config or via --root)
 npx @tscodex/mcp-images
 
 # With custom host (via CLI argument - takes precedence over env var)
@@ -132,8 +144,25 @@ MCP_HOST=127.0.0.1 MCP_PORT=3000 npx @tscodex/mcp-images
 MCP_HOST=0.0.0.0 MCP_PORT=3848 npx @tscodex/mcp-images --host 127.0.0.1 --port 3000
 # Will use host=127.0.0.1, port=3000
 
-# With project root
-MCP_PROJECT_ROOT=/path/to/project npx @tscodex/mcp-images
+# With project root via CLI (RECOMMENDED for standalone server)
+# Windows:
+npx @tscodex/mcp-images --host 127.0.0.1 --port 4040 --root D:\MyProjects\my-project
+# macOS/Linux:
+npx @tscodex/mcp-images --host 127.0.0.1 --port 4040 --root /Users/username/my-project
+
+# With project root via environment variable
+# Windows (PowerShell):
+$env:MCP_PROJECT_ROOT="D:\MyProjects\my-project"; npx @tscodex/mcp-images --host 127.0.0.1 --port 4040
+# Windows (CMD):
+set MCP_PROJECT_ROOT=D:\MyProjects\my-project && npx @tscodex/mcp-images --host 127.0.0.1 --port 4040
+# macOS/Linux:
+MCP_PROJECT_ROOT=/Users/username/my-project npx @tscodex/mcp-images --host 127.0.0.1 --port 4040
+
+# Using npm scripts (from project directory):
+# Windows:
+npm run start -- --host=127.0.0.1 --port=4040 --root=D:\MyProjects\my-project
+# macOS/Linux:
+npm run start -- --host=127.0.0.1 --port=4040 --root=/Users/username/my-project
 
 # With API keys
 SECRET_PEXELS_API_KEY=your_key \
@@ -163,7 +192,6 @@ DEFAULT_PROVIDER=pexels
 DEFAULT_FORMAT=webp
 DEFAULT_MAX_WIDTH=1920
 DEFAULT_QUALITY=80
-ASSETS_DIR=public/images/stock
 SAVE_METADATA=true
 EMBED_EXIF=false
 
@@ -267,7 +295,7 @@ Configuration is loaded from multiple sources with the following priority:
    DEFAULT_PROVIDER=pexels npx @tscodex/mcp-images
    ```
 
-3. **Config File** (`.cursor-stock-images.json`)
+3. **Config File** (`.mcp-images.json`)
    ```json
    {
      "defaultProvider": "pexels"
@@ -278,6 +306,13 @@ Configuration is loaded from multiple sources with the following priority:
    - Defined in TypeBox schema
 
 ## Development
+
+This project is built on top of [@tscodex/mcp-sdk](https://www.npmjs.com/package/@tscodex/mcp-sdk), which provides:
+- MCP server infrastructure and protocol handling
+- Authentication and session management
+- Configuration loading (CLI args, env vars, config files)
+- Secrets management (SECRET_* environment variables)
+- HTTP transport and request handling
 
 ```bash
 # Clone repository
@@ -341,3 +376,4 @@ MIT
 - **GitHub**: https://github.com/unbywyd/tscodex-mcp-images
 - **NPM**: https://www.npmjs.com/package/@tscodex/mcp-images
 - **Issues**: https://github.com/unbywyd/tscodex-mcp-images/issues
+- **MCP SDK**: https://www.npmjs.com/package/@tscodex/mcp-sdk

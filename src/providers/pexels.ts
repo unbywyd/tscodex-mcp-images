@@ -1,12 +1,12 @@
 import fetch from 'node-fetch';
-import { ImageProvider, UniversalPhoto, UniversalSearchResponse, SearchOptions, PexelsPhoto, PexelsSearchResponse, ImageProviderInterface } from '../types.js';
+import { EImageProvider, UniversalPhoto, UniversalSearchResponse, SearchOptions, PexelsPhoto, PexelsSearchResponse, ImageProviderInterface } from '../types.js';
 import { sanitizeError } from '../utils.js';
 
 /**
  * Pexels Provider - implementation of interface for Pexels API
  */
 export class PexelsProvider implements ImageProviderInterface {
-  name = ImageProvider.PEXELS;
+  name = EImageProvider.PEXELS;
   private apiKey: string;
   private baseUrl = 'https://api.pexels.com/v1';
 
@@ -61,7 +61,7 @@ export class PexelsProvider implements ImageProviderInterface {
   private normalizePhoto(photo: PexelsPhoto): UniversalPhoto {
     return {
       id: photo.id,
-      provider: ImageProvider.PEXELS,
+      provider: EImageProvider.PEXELS,
       photographer: photo.photographer,
       photographerUrl: photo.photographer_url,
       url: photo.url,
@@ -118,7 +118,7 @@ export class PexelsProvider implements ImageProviderInterface {
 
       return {
         photos: data.photos.map(photo => this.normalizePhoto(photo)),
-        provider: ImageProvider.PEXELS,
+        provider: EImageProvider.PEXELS,
         fallbackUsed: false,
         page: 1, // Always first page
         perPage: data.per_page,

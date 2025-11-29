@@ -1,10 +1,10 @@
-import { ImageProvider, UniversalPhoto, UniversalSearchResponse, SearchOptions } from '../types.js';
+import { EImageProvider, UniversalPhoto, UniversalSearchResponse, SearchOptions } from '../types.js';
 
 /**
  * Base interface for image providers
  */
 export interface ImageProviderInterface {
-  name: ImageProvider;
+  name: EImageProvider;
   
   /**
    * Search for images

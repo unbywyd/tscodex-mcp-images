@@ -2,7 +2,7 @@ import { McpServer } from '@tscodex/mcp-sdk';
 import { Type, type Static } from '@sinclair/typebox';
 import { Config } from '../config.js';
 import { ProviderManager } from '../providers/manager.js';
-import { ImageProvider } from '../types.js';
+import { EImageProvider } from '../types.js';
 import { processAndSaveImage, imageToBase64 } from '../image-processor.js';
 import { findProjectRoot } from '../image-processor.js';
 import { resolve } from 'path';
@@ -133,7 +133,7 @@ export function registerStockImageTools(
       }
 
       // Determine provider
-      const requestedProvider = (params.provider === 'auto' ? ImageProvider.AUTO : params.provider) as ImageProvider;
+      const requestedProvider = (params.provider === 'auto' ? EImageProvider.AUTO : params.provider) as EImageProvider;
 
       // Fixed perPage = 1 (1 image per request)
       const perPageForRequest = 1;
@@ -156,8 +156,8 @@ export function registerStockImageTools(
       const content: Array<{ type: 'text' | 'image'; text?: string; mimeType?: string; data?: string }> = [];
 
       // Provider information (only Pexels/Pixabay)
-      const providerName = searchResult.provider === ImageProvider.PEXELS ? 'Pexels' : 'Pixabay';
-      const fallbackInfo = searchResult.fallbackUsed ? ` (fallback from ${requestedProvider === ImageProvider.PEXELS ? 'Pexels' : 'Pixabay'})` : '';
+      const providerName = searchResult.provider === EImageProvider.PEXELS ? 'Pexels' : 'Pixabay';
+      const fallbackInfo = searchResult.fallbackUsed ? ` (fallback from ${requestedProvider === EImageProvider.PEXELS ? 'Pexels' : 'Pixabay'})` : '';
       
       content.push({
         type: 'text',
@@ -266,7 +266,7 @@ export function registerStockImageTools(
       }
 
       // Determine provider (only Pexels/Pixabay)
-      const requestedProvider = (params.provider === 'auto' ? ImageProvider.AUTO : params.provider) as ImageProvider;
+      const requestedProvider = (params.provider === 'auto' ? EImageProvider.AUTO : params.provider) as EImageProvider;
 
       // Get photo with fallback
       const { photo, provider: usedProvider, fallbackUsed } = await providerManager.getPhotoWithFallback(
@@ -288,8 +288,8 @@ export function registerStockImageTools(
       });
       
       // Build response (only Pexels/Pixabay)
-      const providerName = usedProvider === ImageProvider.PEXELS ? 'Pexels' : 'Pixabay';
-      const fallbackInfo = fallbackUsed ? ` (fallback from ${requestedProvider === ImageProvider.PEXELS ? 'Pexels' : 'Pixabay'})` : '';
+      const providerName = usedProvider === EImageProvider.PEXELS ? 'Pexels' : 'Pixabay';
+      const fallbackInfo = fallbackUsed ? ` (fallback from ${requestedProvider === EImageProvider.PEXELS ? 'Pexels' : 'Pixabay'})` : '';
       const photographerInfo = photo.photographerUrl
         ? `[${photo.photographer}](${photo.photographerUrl})`
         : photo.photographer;

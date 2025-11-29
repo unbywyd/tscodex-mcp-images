@@ -1,4 +1,4 @@
-import { ImageProvider, ImageFormat, ApiKeys } from './types.js';
+import { EImageProvider, ImageFormat, ApiKeys } from './types.js';
 import { Config, ConfigSchema } from './config.js';
 import { loadConfig } from '@tscodex/mcp-sdk';
 

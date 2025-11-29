@@ -1,12 +1,12 @@
 import fetch from 'node-fetch';
-import { ImageProvider, UniversalPhoto, UniversalSearchResponse, SearchOptions, PixabayPhoto, PixabaySearchResponse, ImageProviderInterface } from '../types.js';
+import { EImageProvider, UniversalPhoto, UniversalSearchResponse, SearchOptions, PixabayPhoto, PixabaySearchResponse, ImageProviderInterface } from '../types.js';
 import { sanitizeError } from '../utils.js';
 
 /**
  * Pixabay Provider - implementation of interface for Pixabay API
  */
 export class PixabayProvider implements ImageProviderInterface {
-  name = ImageProvider.PIXABAY;
+  name = EImageProvider.PIXABAY;
   private apiKey: string;
   private baseUrl = 'https://pixabay.com/api';
 
@@ -84,7 +84,7 @@ export class PixabayProvider implements ImageProviderInterface {
 
     return {
       id: photo.id,
-      provider: ImageProvider.PIXABAY,
+      provider: EImageProvider.PIXABAY,
       photographer: photo.user,
       photographerUrl,
       url: photo.pageURL,
@@ -147,7 +147,7 @@ export class PixabayProvider implements ImageProviderInterface {
 
       return {
         photos: data.hits.map(photo => this.normalizePhoto(photo)),
-        provider: ImageProvider.PIXABAY,
+        provider: EImageProvider.PIXABAY,
         fallbackUsed: false,
         page: 1, // Always first page
         perPage: normalizedPerPage, // Use normalized value

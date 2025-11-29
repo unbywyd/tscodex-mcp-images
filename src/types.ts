@@ -1,15 +1,16 @@
 // Provider enum
-export enum ImageProvider {
+export enum EImageProvider {
   PEXELS = 'pexels',
   PIXABAY = 'pixabay',
   OPENAI = 'openai',
   AUTO = 'auto'
 }
+export type ImageProvider = 'pexels' | 'pixabay' | 'openai' | 'auto';
 
 // Universal photo interface (normalized)
 export interface UniversalPhoto {
   id: number;
-  provider: ImageProvider;  // Source provider
+  provider: EImageProvider;  // Source provider
   photographer: string;     // Photographer/user name
   photographerUrl?: string; // Photographer profile URL (optional for Pixabay)
   url: string;              // Photo page URL
@@ -29,7 +30,7 @@ export interface UniversalPhoto {
 // Universal search response format
 export interface UniversalSearchResponse {
   photos: UniversalPhoto[];
-  provider: ImageProvider;  // Used provider
+  provider: EImageProvider;  // Used provider
   fallbackUsed: boolean;    // Whether fallback was used
   page: number;
   perPage: number;
@@ -125,7 +126,7 @@ export interface SearchOptions {
 
 // Provider interface
 export interface ImageProviderInterface {
-  name: ImageProvider;
+  name: EImageProvider;
   search(query: string, options: SearchOptions): Promise<UniversalSearchResponse>;
   getPhoto(photoId: number): Promise<UniversalPhoto>;
   downloadImage(photo: UniversalPhoto, size: 'original' | 'large'): Promise<Buffer>;

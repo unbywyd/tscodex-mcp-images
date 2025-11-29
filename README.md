@@ -22,7 +22,7 @@ npm install -g @tscodex/mcp-images
 Or use with npx:
 
 ```bash
-npx @tscodex/mcp-images
+npx @tscodex/mcp-images@latest
 ```
 
 ## Quick Start
@@ -31,30 +31,30 @@ npx @tscodex/mcp-images
 
 ```bash
 # Start server with default settings
-npx @tscodex/mcp-images
+npx @tscodex/mcp-images@latest
 
 # Server will start on port 3848 by default (host: 0.0.0.0)
 # MCP endpoint: http://localhost:3848/mcp
 
 # Start with custom host
-npx @tscodex/mcp-images --host 127.0.0.1
+npx @tscodex/mcp-images@latest --host 127.0.0.1
 # or
-npx @tscodex/mcp-images --host=127.0.0.1
+npx @tscodex/mcp-images@latest --host=127.0.0.1
 # or short form
-npx @tscodex/mcp-images -h 127.0.0.1
+npx @tscodex/mcp-images@latest -h 127.0.0.1
 
 # Start with custom port
-npx @tscodex/mcp-images --port 3000
+npx @tscodex/mcp-images@latest --port 3000
 # or
-npx @tscodex/mcp-images --port=3000
+npx @tscodex/mcp-images@latest --port=3000
 # or short form
-npx @tscodex/mcp-images -p 3000
+npx @tscodex/mcp-images@latest -p 3000
 
 # Combine host and port
-npx @tscodex/mcp-images --host 127.0.0.1 --port 3000
+npx @tscodex/mcp-images@latest --host 127.0.0.1 --port 3000
 
 # Get server metadata (for Extension integration)
-npx @tscodex/mcp-images --meta
+npx @tscodex/mcp-images@latest --meta
 
 # Or with npm scripts (from project directory):
 npm start              # Start server

@@ -8,7 +8,7 @@
   "bin": {
     "mcp-images": "./dist/index.js"
   },
-  "preferGlobal": false,
+  "preferGlobal": true,
   "private": false,
   "scripts": {
     "build": "tsc",

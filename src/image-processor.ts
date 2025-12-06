@@ -753,6 +753,7 @@ export async function createPlaceholderImage(
     imageId?: number;
     blur?: number;
     grayscale?: boolean;
+    transparent?: boolean; // Create fully transparent image (ignores backgroundColor and text)
   }
 ): Promise<{
   filePath: string;
@@ -770,10 +771,13 @@ export async function createPlaceholderImage(
     imageId,
     blur,
     grayscale,
+    transparent = false,
   } = options;
 
-  // Determine format
-  const format = determineFormat(targetPath as string, formatParam as ImageFormat, config.defaultFormat as ImageFormat);
+  // For transparent images, force PNG format (only PNG supports transparency properly)
+  const format = transparent
+    ? 'png' as ImageFormat
+    : determineFormat(targetPath as string, formatParam as ImageFormat, config.defaultFormat as ImageFormat);
 
   // Determine project root
   const projectRootResult = await findProjectRoot(config.root);
@@ -782,8 +786,20 @@ export async function createPlaceholderImage(
 
   let processedBuffer: Buffer;
 
-  // If need to use real image from Picsum
-  if (useImage) {
+  // If transparent image requested - create fully transparent PNG
+  if (transparent) {
+    // Create transparent image using Sharp
+    processedBuffer = await sharp({
+      create: {
+        width,
+        height,
+        channels: 4, // RGBA - 4 channels for transparency
+        background: { r: 0, g: 0, b: 0, alpha: 0 } // Fully transparent
+      }
+    })
+      .png({ compressionLevel: 9 })
+      .toBuffer();
+  } else if (useImage) {
     const fetch = (await import('node-fetch')).default;
 
     // Build URL for Picsum
@@ -900,15 +916,18 @@ export async function createFavicon(
   config: Config,
   options: {
     sizes?: number[]; // Sizes to generate (default standard sizes)
-    generateIco?: boolean; // Whether to generate ICO file (requires additional library)
+    projectRoot?: string; // Override project root (if not provided, will be detected)
+    appName?: string; // Application name for PWA manifest
+    themeColor?: string; // Theme color for PWA manifest (HEX)
+    backgroundColor?: string; // Background color for PWA manifest (HEX)
   } = {}
 ): Promise<{
   files: Array<{ path: string; size: string; format: string }>;
   htmlCode: string;
   faviconPath?: string;
 }> {
-  const projectRootResult = await findProjectRoot(config.root);
-  const fullOutputDir = resolve(projectRootResult.root, outputDir);
+  const projectRoot = options.projectRoot || (await findProjectRoot(config.root)).root;
+  const fullOutputDir = resolve(projectRoot, outputDir);
 
   // Standard favicon sizes
   const defaultSizes = [16, 32, 48, 180, 192, 512];
@@ -978,9 +997,40 @@ export async function createFavicon(
   const relativeFaviconPath = `${outputDir}/favicon.png`.replace(/\\/g, '/'); // Normalize path for HTML
   htmlLinks.unshift(`<link rel="icon" type="image/png" href="${relativeFaviconPath}">`);
 
-  // Add manifest for PWA (if sizes 192 and 512 are present)
+  // Generate site.webmanifest for PWA (if sizes 192 and 512 are present)
   if (sizes.includes(192) && sizes.includes(512)) {
-    htmlLinks.push(`<link rel="manifest" href="${outputDir}/site.webmanifest">`);
+    const manifestPath = resolve(fullOutputDir, 'site.webmanifest');
+    const relativeManifestPath = `${outputDir}/site.webmanifest`.replace(/\\/g, '/');
+
+    const manifest = {
+      name: options.appName || '',
+      short_name: options.appName || '',
+      icons: [
+        {
+          src: `${outputDir}/favicon-192x192.png`.replace(/\\/g, '/'),
+          sizes: '192x192',
+          type: 'image/png'
+        },
+        {
+          src: `${outputDir}/favicon-512x512.png`.replace(/\\/g, '/'),
+          sizes: '512x512',
+          type: 'image/png'
+        }
+      ],
+      theme_color: options.themeColor || '#ffffff',
+      background_color: options.backgroundColor || '#ffffff',
+      display: 'standalone'
+    };
+
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+
+    files.push({
+      path: relativeManifestPath,
+      size: 'manifest',
+      format: 'json',
+    });
+
+    htmlLinks.push(`<link rel="manifest" href="${relativeManifestPath}">`);
   }
 
   // Build HTML code
@@ -1036,6 +1086,9 @@ export async function addWatermark(
 
     // Output file format
     format?: ImageFormat;
+
+    // Override project root
+    projectRoot?: string;
   }
 ): Promise<{
   filePath: string;
@@ -1043,9 +1096,9 @@ export async function addWatermark(
   width: number;
   height: number;
 }> {
-  const projectRootResult = await findProjectRoot(config.root);
-  const fullImagePath = resolve(projectRootResult.root, imagePath);
-  const fullOutputPath = resolve(projectRootResult.root, outputPath);
+  const projectRoot = options.projectRoot || (await findProjectRoot(config.root)).root;
+  const fullImagePath = resolve(projectRoot, imagePath);
+  const fullOutputPath = resolve(projectRoot, outputPath);
 
   // Check if source image exists
   const fs = await import('fs/promises');
@@ -1111,7 +1164,7 @@ export async function addWatermark(
     watermarkBuffer = Buffer.from(svg);
   } else if (options.watermarkImagePath) {
     // Image watermark
-    const fullWatermarkPath = resolve(projectRootResult.root, options.watermarkImagePath);
+    const fullWatermarkPath = resolve(projectRoot, options.watermarkImagePath);
 
     try {
       await fs.access(fullWatermarkPath);
@@ -1309,6 +1362,9 @@ export async function applyFilters(
 
     // Output file format
     format?: ImageFormat;
+
+    // Override project root
+    projectRoot?: string;
   }
 ): Promise<{
   filePath: string;
@@ -1317,9 +1373,9 @@ export async function applyFilters(
   height: number;
   appliedFilters: string[];
 }> {
-  const projectRootResult = await findProjectRoot(config.root);
-  const fullImagePath = resolve(projectRootResult.root, imagePath);
-  const fullOutputPath = resolve(projectRootResult.root, outputPath);
+  const projectRoot = options.projectRoot || (await findProjectRoot(config.root)).root;
+  const fullImagePath = resolve(projectRoot, imagePath);
+  const fullOutputPath = resolve(projectRoot, outputPath);
 
   // Check if source image exists
   const fs = await import('fs/promises');
@@ -1467,6 +1523,9 @@ export async function rotateImage(
 
     // Output file format
     format?: ImageFormat;
+
+    // Override project root
+    projectRoot?: string;
   }
 ): Promise<{
   filePath: string;
@@ -1475,9 +1534,9 @@ export async function rotateImage(
   height: number;
   angle: number;
 }> {
-  const projectRootResult = await findProjectRoot(config.root);
-  const fullImagePath = resolve(projectRootResult.root, imagePath);
-  const fullOutputPath = resolve(projectRootResult.root, outputPath);
+  const projectRoot = options.projectRoot || (await findProjectRoot(config.root)).root;
+  const fullImagePath = resolve(projectRoot, imagePath);
+  const fullOutputPath = resolve(projectRoot, outputPath);
 
   // Check if source image exists
   const fs = await import('fs/promises');
@@ -1559,6 +1618,9 @@ export async function cropImage(
 
     // Output file format
     format?: ImageFormat;
+
+    // Override project root
+    projectRoot?: string;
   }
 ): Promise<{
   filePath: string;
@@ -1572,9 +1634,9 @@ export async function cropImage(
     height: number;
   };
 }> {
-  const projectRootResult = await findProjectRoot(config.root);
-  const fullImagePath = resolve(projectRootResult.root, imagePath);
-  const fullOutputPath = resolve(projectRootResult.root, outputPath);
+  const projectRoot = options.projectRoot || (await findProjectRoot(config.root)).root;
+  const fullImagePath = resolve(projectRoot, imagePath);
+  const fullOutputPath = resolve(projectRoot, outputPath);
 
   // Check if source image exists
   const fs = await import('fs/promises');

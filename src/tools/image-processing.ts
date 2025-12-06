@@ -2,17 +2,16 @@ import { McpServer } from '@tscodex/mcp-sdk';
 import { Type, type Static } from '@sinclair/typebox';
 import { Config } from '../config.js';
 import { ProviderManager } from '../providers/manager.js';
-import { 
-  processLocalImage, 
-  analyzeImage, 
-  optimizeImage, 
-  createPlaceholderImage, 
-  createFavicon, 
-  addWatermark, 
-  applyFilters, 
-  rotateImage, 
-  cropImage,
-  findProjectRoot
+import {
+  processLocalImage,
+  analyzeImage,
+  optimizeImage,
+  createPlaceholderImage,
+  createFavicon,
+  addWatermark,
+  applyFilters,
+  rotateImage,
+  cropImage
 } from '../image-processor.js';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
@@ -22,6 +21,26 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+/**
+ * Get project root from context
+ * Priority:
+ * 1. context.projectRoot (from SDK, set via X-MCP-Project-Root header)
+ * 2. config.root (fallback from configuration file)
+ * 3. Error if neither is available
+ */
+function getProjectRoot(context: { projectRoot?: string; config: Config }): string {
+  const projectRoot = context.projectRoot || context.config.root;
+  if (!projectRoot) {
+    throw new Error(
+      'Project root is not set. Either:\n' +
+      '1. The MCP client should provide project root via X-MCP-Project-Root header, or\n' +
+      '2. Set "root" in .mcp-images.json configuration file.\n' +
+      'If using Cursor, make sure the workspace is properly configured.'
+    );
+  }
+  return projectRoot;
 }
 
 /**
@@ -42,9 +61,9 @@ export function registerImageProcessingTools(
       Type.Literal('png'),
       Type.Literal('avif')
     ], { description: 'Output format. If not specified, determined from outputPath extension or keeps original format' })),
-    width: Type.Optional(Type.Number({ minimum: 100, maximum: 4000, description: 'Exact width in pixels' })),
-    height: Type.Optional(Type.Number({ minimum: 100, maximum: 4000, description: 'Exact height in pixels' })),
-    maxWidth: Type.Optional(Type.Number({ minimum: 100, maximum: 4000, description: 'Maximum width in pixels (maintains aspect ratio)' })),
+    width: Type.Optional(Type.Number({ minimum: 1, maximum: 4000, description: 'Exact width in pixels' })),
+    height: Type.Optional(Type.Number({ minimum: 1, maximum: 4000, description: 'Exact height in pixels' })),
+    maxWidth: Type.Optional(Type.Number({ minimum: 1, maximum: 4000, description: 'Maximum width in pixels (maintains aspect ratio)' })),
     aspectRatio: Type.Optional(Type.String({ pattern: '^\\d+:\\d+$', description: 'Aspect ratio in format "width:height" (e.g., "16:9", "1:1")' })),
     quality: Type.Optional(Type.Number({ minimum: 1, maximum: 100, default: 80, description: 'Image quality (1-100)' })),
     circle: Type.Optional(Type.Boolean({ default: false, description: 'Crop image to circle shape. Image will be cropped to square first, then masked as circle. Output format will be PNG with transparency.' }))
@@ -52,11 +71,11 @@ export function registerImageProcessingTools(
 
   server.addTool({
     name: 'image_process_local',
-    description: 'Process local image file: resize, crop, convert format, optimize. IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Process local image file: resize, crop, convert format, optimize. All paths are relative to the project root.',
     schema: ProcessImageSchema,
     handler: async (params: Static<typeof ProcessImageSchema>, context) => {
       const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
 
       const fullInputPath = resolve(projectRoot, params.imagePath);
       let outputFilePath = params.outputPath ? resolve(projectRoot, params.outputPath) : fullInputPath;
@@ -123,11 +142,11 @@ export function registerImageProcessingTools(
 
   server.addTool({
     name: 'image_analyze',
-    description: 'Analyze local image: dimensions, format, file size, metadata, optimization suggestions. IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Analyze local image: dimensions, format, file size, metadata, optimization suggestions. All paths are relative to the project root.',
     schema: AnalyzeImageSchema,
     handler: async (params: Static<typeof AnalyzeImageSchema>, context) => {
       const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
 
       const fullPath = resolve(projectRoot, params.imagePath);
 
@@ -185,17 +204,17 @@ export function registerImageProcessingTools(
   const OptimizeImageSchema = Type.Object({
     imagePath: Type.String({ description: 'Path to local image file (relative to project root)' }),
     outputPath: Type.Optional(Type.String({ description: 'Output path (relative to project root). If not specified, overwrites original file' })),
-    maxWidth: Type.Optional(Type.Number({ minimum: 100, maximum: 4000, description: 'Maximum width in pixels (optional, for resizing large images)' })),
+    maxWidth: Type.Optional(Type.Number({ minimum: 1, maximum: 4000, description: 'Maximum width in pixels (optional, for resizing large images)' })),
     quality: Type.Optional(Type.Number({ minimum: 1, maximum: 100, default: 85, description: 'Target quality (1-100). Lower values = smaller files' }))
   });
 
   server.addTool({
     name: 'image_optimize',
-    description: 'Automatically optimize local image: compress, convert to best format, reduce file size. IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Automatically optimize local image: compress, convert to best format, reduce file size. All paths are relative to the project root.',
     schema: OptimizeImageSchema,
     handler: async (params: Static<typeof OptimizeImageSchema>, context) => {
       const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
 
       const fullInputPath = resolve(projectRoot, params.imagePath);
       const outputFilePath = params.outputPath ? resolve(projectRoot, params.outputPath) : fullInputPath;
@@ -237,30 +256,31 @@ export function registerImageProcessingTools(
   // image_create_placeholder
   const CreatePlaceholderSchema = Type.Object({
     outputPath: Type.String({ description: 'Output path (relative to project root, e.g., "public/images/placeholder-1920x1080.png")' }),
-    width: Type.Number({ minimum: 100, maximum: 4000, description: 'Width in pixels' }),
-    height: Type.Number({ minimum: 100, maximum: 4000, description: 'Height in pixels' }),
-    backgroundColor: Type.Optional(Type.String({ default: '#cccccc', description: 'Background color in HEX format (e.g., "#cccccc", "#f0f0f0")' })),
-    textColor: Type.Optional(Type.String({ default: '#666666', description: 'Text color in HEX format (e.g., "#666666", "#333333")' })),
+    width: Type.Number({ minimum: 1, maximum: 4000, description: 'Width in pixels' }),
+    height: Type.Number({ minimum: 1, maximum: 4000, description: 'Height in pixels' }),
+    backgroundColor: Type.Optional(Type.String({ default: '#cccccc', description: 'Background color in HEX format (e.g., "#cccccc", "#f0f0f0"). Ignored if transparent=true' })),
+    textColor: Type.Optional(Type.String({ default: '#666666', description: 'Text color in HEX format (e.g., "#666666", "#333333"). Ignored if transparent=true' })),
     format: Type.Optional(Type.Union([
       Type.Literal('webp'),
       Type.Literal('jpeg'),
       Type.Literal('jpg'),
       Type.Literal('png'),
       Type.Literal('avif')
-    ], { description: 'Output format. If not specified, determined from outputPath extension' })),
+    ], { description: 'Output format. If not specified, determined from outputPath extension. When transparent=true, PNG is forced' })),
     useImage: Type.Optional(Type.Boolean({ default: false, description: 'Use real image from Lorem Picsum instead of colored block with text' })),
     imageId: Type.Optional(Type.Number({ minimum: 0, maximum: 1084, description: 'Specific image ID from Picsum (0-1084). If not specified, random image will be used' })),
     blur: Type.Optional(Type.Number({ minimum: 1, maximum: 10, description: 'Blur level (1-10) for Picsum image' })),
-    grayscale: Type.Optional(Type.Boolean({ default: false, description: 'Convert Picsum image to grayscale' }))
+    grayscale: Type.Optional(Type.Boolean({ default: false, description: 'Convert Picsum image to grayscale' })),
+    transparent: Type.Optional(Type.Boolean({ default: false, description: 'Create fully transparent image (useful for spacer/tracking pixels). Output will be PNG format. Ignores backgroundColor and textColor' }))
   });
 
   server.addTool({
     name: 'image_create_placeholder',
-    description: 'Create placeholder image with dimensions displayed in center (useful for designers). IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Create placeholder image with dimensions displayed in center (useful for designers). All paths are relative to the project root.',
     schema: CreatePlaceholderSchema,
     handler: async (params: Static<typeof CreatePlaceholderSchema>, context) => {
       const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
 
       const result = await createPlaceholderImage(
         resolve(projectRoot, params.outputPath),
@@ -275,6 +295,7 @@ export function registerImageProcessingTools(
           imageId: params.imageId,
           blur: params.blur,
           grayscale: params.grayscale,
+          transparent: params.transparent,
         }
       );
 
@@ -282,6 +303,9 @@ export function registerImageProcessingTools(
       responseText += `**Output:** ${params.outputPath}\n`;
       responseText += `**Dimensions:** ${result.width}x${result.height}px\n`;
       responseText += `**Format:** ${result.format.toUpperCase()}\n`;
+      if (params.transparent) {
+        responseText += `**Type:** Transparent (fully transparent PNG)\n`;
+      }
 
       return {
         content: [{ type: 'text', text: responseText }]
@@ -293,16 +317,19 @@ export function registerImageProcessingTools(
   const CreateFaviconSchema = Type.Object({
     imagePath: Type.String({ description: 'Path to source image file (relative to project root)' }),
     outputDir: Type.String({ description: 'Output directory for favicon files (relative to project root, e.g., "public/favicons")' }),
-    sizes: Type.Optional(Type.Array(Type.Number({ minimum: 16, maximum: 512 }), { description: 'Custom sizes to generate. Default: [16, 32, 48, 180, 192, 512]' }))
+    sizes: Type.Optional(Type.Array(Type.Number({ minimum: 16, maximum: 512 }), { description: 'Custom sizes to generate. Default: [16, 32, 48, 180, 192, 512]' })),
+    appName: Type.Optional(Type.String({ description: 'Application name for PWA manifest (site.webmanifest)' })),
+    themeColor: Type.Optional(Type.String({ pattern: '^#[0-9a-fA-F]{6}$', description: 'Theme color for PWA manifest in HEX format (e.g., "#ffffff")' })),
+    backgroundColor: Type.Optional(Type.String({ pattern: '^#[0-9a-fA-F]{6}$', description: 'Background color for PWA manifest in HEX format (e.g., "#ffffff")' }))
   });
 
   server.addTool({
     name: 'image_create_favicon',
-    description: 'Create favicon from image. Generates multiple sizes (16x16, 32x32, 48x48, 180x180, 192x192, 512x512) and provides HTML code for integration. IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Create favicon from image. Generates multiple sizes (16x16, 32x32, 48x48, 180x180, 192x192, 512x512), site.webmanifest for PWA, and provides HTML code for integration. All paths are relative to the project root.',
     schema: CreateFaviconSchema,
     handler: async (params: Static<typeof CreateFaviconSchema>, context) => {
       const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
 
       const fullImagePath = resolve(projectRoot, params.imagePath);
 
@@ -320,6 +347,10 @@ export function registerImageProcessingTools(
       // Create favicon
       const result = await createFavicon(imageBuffer, params.outputDir, config, {
         sizes: params.sizes,
+        projectRoot,
+        appName: params.appName,
+        themeColor: params.themeColor,
+        backgroundColor: params.backgroundColor,
       });
 
       let responseText = `✅ Favicon Created Successfully\n\n`;
@@ -370,11 +401,11 @@ export function registerImageProcessingTools(
 
   server.addTool({
     name: 'image_add_watermark',
-    description: 'Add watermark to image. Supports text or image watermarks with customizable positioning, size, and opacity. IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Add watermark to image. Supports text or image watermarks with customizable positioning, size, and opacity. All paths are relative to the project root.',
     schema: AddWatermarkSchema,
     handler: async (params: Static<typeof AddWatermarkSchema>, context) => {
       const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
 
       const result = await addWatermark(
         params.imagePath,
@@ -393,6 +424,7 @@ export function registerImageProcessingTools(
           sizePercent: params.sizePercent,
           opacity: params.opacity,
           format: params.format === 'jpg' ? 'jpeg' : params.format,
+          projectRoot,
         }
       );
 
@@ -430,11 +462,11 @@ export function registerImageProcessingTools(
 
   server.addTool({
     name: 'image_apply_filters',
-    description: 'Apply filters and effects to image. Supports blur, sharpen, grayscale, sepia, brightness, contrast, and saturation adjustments. IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Apply filters and effects to image. Supports blur, sharpen, grayscale, sepia, brightness, contrast, and saturation adjustments. All paths are relative to the project root.',
     schema: ApplyFiltersSchema,
     handler: async (params: Static<typeof ApplyFiltersSchema>, context) => {
       const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
 
       const result = await applyFilters(
         params.imagePath,
@@ -449,6 +481,7 @@ export function registerImageProcessingTools(
           contrast: params.contrast,
           saturation: params.saturation,
           format: params.format === 'jpg' ? 'jpeg' : params.format,
+          projectRoot,
         }
       );
 
@@ -484,11 +517,11 @@ export function registerImageProcessingTools(
 
   server.addTool({
     name: 'image_rotate',
-    description: 'Rotate image by specified angle. Supports standard rotations (90°, 180°, 270°) or custom angle in degrees. IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Rotate image by specified angle. Supports standard rotations (90°, 180°, 270°) or custom angle in degrees. All paths are relative to the project root.',
     schema: RotateImageSchema,
     handler: async (params: Static<typeof RotateImageSchema>, context) => {
       const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
 
       const result = await rotateImage(
         params.imagePath,
@@ -500,6 +533,7 @@ export function registerImageProcessingTools(
           rotate180: params.rotate180,
           rotate270: params.rotate270,
           format: params.format === 'jpg' ? 'jpeg' : params.format,
+          projectRoot,
         }
       );
 
@@ -535,11 +569,11 @@ export function registerImageProcessingTools(
 
   server.addTool({
     name: 'image_crop_custom',
-    description: 'Crop image by exact coordinates. Useful for precise cropping with specified x, y, width, and height. IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Crop image by exact coordinates. Useful for precise cropping with specified x, y, width, and height. All paths are relative to the project root.',
     schema: CropImageSchema,
     handler: async (params: Static<typeof CropImageSchema>, context) => {
       const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
 
       const result = await cropImage(
         params.imagePath,
@@ -551,6 +585,7 @@ export function registerImageProcessingTools(
           width: params.width,
           height: params.height,
           format: params.format === 'jpg' ? 'jpeg' : params.format,
+          projectRoot,
         }
       );
 

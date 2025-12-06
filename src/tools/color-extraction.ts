@@ -3,8 +3,27 @@ import { Type, type Static } from '@sinclair/typebox';
 import { Config } from '../config.js';
 import { extractColors, generateColorPaletteImage } from '../color-extractor.js';
 import { readFile, writeFile } from 'fs/promises';
-import { findProjectRoot } from '../image-processor.js';
 import { resolve } from 'path';
+
+/**
+ * Get project root from context
+ * Priority:
+ * 1. context.projectRoot (from SDK, set via X-MCP-Project-Root header)
+ * 2. config.root (fallback from configuration file)
+ * 3. Error if neither is available
+ */
+function getProjectRoot(context: { projectRoot?: string; config: Config }): string {
+  const projectRoot = context.projectRoot || context.config.root;
+  if (!projectRoot) {
+    throw new Error(
+      'Project root is not set. Either:\n' +
+      '1. The MCP client should provide project root via X-MCP-Project-Root header, or\n' +
+      '2. Set "root" in .mcp-images.json configuration file.\n' +
+      'If using Cursor, make sure the workspace is properly configured.'
+    );
+  }
+  return projectRoot;
+}
 
 /**
  * Register color extraction tools
@@ -17,11 +36,10 @@ export function registerColorExtractionTools(server: McpServer<Config>) {
 
   server.addTool({
     name: 'image_extract_colors_local',
-    description: 'Extract dominant colors and color palette from a local image file. For images from providers (Pexels/Pixabay), first download them using stock_images_download_to_project, then use this tool. IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Extract dominant colors and color palette from a local image file. For images from providers (Pexels/Pixabay), first download them using stock_images_download_to_project, then use this tool. All paths are relative to the project root.',
     schema: ExtractColorsSchema,
     handler: async (params: Static<typeof ExtractColorsSchema>, context) => {
-      const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
 
       const fullPath = resolve(projectRoot, params.imagePath);
 
@@ -101,11 +119,10 @@ export function registerColorExtractionTools(server: McpServer<Config>) {
 
   server.addTool({
     name: 'generate_color_palette_image',
-    description: 'Generate visual color palette image from local image file. Creates a PNG image showing all extracted colors with HEX codes. IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Generate visual color palette image from local image file. Creates a PNG image showing all extracted colors with HEX codes. All paths are relative to the project root.',
     schema: GeneratePaletteSchema,
     handler: async (params: Static<typeof GeneratePaletteSchema>, context) => {
-      const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
 
       const fullImagePath = resolve(projectRoot, params.imagePath);
       const fullOutputPath = resolve(projectRoot, params.outputPath);

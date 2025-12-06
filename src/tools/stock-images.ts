@@ -4,8 +4,27 @@ import { Config } from '../config.js';
 import { ProviderManager } from '../providers/manager.js';
 import { EImageProvider } from '../types.js';
 import { processAndSaveImage, imageToBase64 } from '../image-processor.js';
-import { findProjectRoot } from '../image-processor.js';
 import { resolve } from 'path';
+
+/**
+ * Get project root from context
+ * Priority:
+ * 1. context.projectRoot (from SDK, set via X-MCP-Project-Root header)
+ * 2. config.root (fallback from configuration file)
+ * 3. Error if neither is available
+ */
+function getProjectRoot(context: { projectRoot?: string; config: Config }): string {
+  const projectRoot = context.projectRoot || context.config.root;
+  if (!projectRoot) {
+    throw new Error(
+      'Project root is not set. Either:\n' +
+      '1. The MCP client should provide project root via X-MCP-Project-Root header, or\n' +
+      '2. Set "root" in .mcp-images.json configuration file.\n' +
+      'If using Cursor, make sure the workspace is properly configured.'
+    );
+  }
+  return projectRoot;
+}
 
 /**
  * Register stock image tools
@@ -241,11 +260,11 @@ export function registerStockImageTools(
 
   server.addTool({
     name: 'stock_images_download_to_project',
-    description: 'Download and save image from provider to project with optimization. Requires at least one API key to be configured. IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Download and save image from provider to project with optimization. Requires at least one API key to be configured. All paths are relative to the project root.',
     schema: DownloadImageSchema,
     handler: async (params: Static<typeof DownloadImageSchema>, context) => {
       const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
       const providerManager = getProviderManager();
 
       // Ensure OpenAI is not used for download (only for generation)

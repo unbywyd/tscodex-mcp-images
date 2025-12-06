@@ -4,36 +4,90 @@ MCP (Model Context Protocol) server for comprehensive image processing, stock im
 
 **Built on [@tscodex/mcp-sdk](https://www.npmjs.com/package/@tscodex/mcp-sdk)** - This project uses the official TSCodex MCP SDK for server infrastructure, authentication, configuration management, and protocol handling.
 
+---
 
-## 🎉 Great News! We've Released a VS Code Extension!
+## 🚀 Quick Links
 
-**Run this server directly in your editor without manual setup!**
+<div align="center">
 
-👉 **[MCP Server Manager](https://marketplace.visualstudio.com/items?itemName=unbywyd.tscodex-mcp-manager)** - A VS Code/Cursor extension that simplifies MCP server management.
+**[📦 MCP Manager](https://github.com/unbywyd/tscodex-mcp-manager-app)** | **[🌉 MCP Bridge](https://github.com/unbywyd/tscodex-mcp-manager-bridge)**
 
-### Why This is Awesome 🚀
+Desktop application for managing MCP servers | VS Code/Cursor extension bridge
 
-**MCP Server Manager** is a powerful extension that fully automates MCP server operations:
+</div>
 
-- ✅ **Automatic Configuration** - The extension automatically passes the project path (`MCP_PROJECT_ROOT`) and configuration (`MCP_CONFIG`)
-- ✅ **Secrets Management** - Secure storage and automatic passing of secrets (e.g., `SECRET_NEWSAPI_KEY`) without manually setting environment variables
-- ✅ **Visual Configuration Editor** - Intuitive UI for server configuration based on JSON Schema, no need to manually edit files
-- ✅ **Cursor Integration** - Automatic server registration in Cursor and synchronization on startup
-- ✅ **Lifecycle Management** - Start, stop, and restart servers with a single click
-- ✅ **Smart Package Installation** - Intelligent npm package installation with compatibility checking
-- ✅ **Real-time Monitoring** - Track server status and health in real-time
-- ✅ **Global & Workspace Settings** - Flexible configuration at editor or project level
+---
 
-**No more manual setup needed:**
-- Setting environment variables
-- Creating configuration files
-- Passing project paths
-- Managing secrets
-- Registering servers in Cursor
+## 🎯 What is This?
 
-The extension handles all of this automatically! 🎯
+This is an **MCP server** built on the **[@tscodex/mcp-sdk](https://www.npmjs.com/package/@tscodex/mcp-sdk)** that provides powerful image processing capabilities. It can work in two ways:
 
-## Features
+1. **Standalone Mode**: Run directly via `npx` or `npm`, passing environment variables and configuration
+2. **Managed Mode**: Use with **[MCP Manager](https://github.com/unbywyd/tscodex-mcp-manager-app)** for workspace isolation, visual configuration, and seamless integration with Cursor
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Cursor (IDE Editor)                      │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │         MCP Manager Bridge Extension                  │  │
+│  │  - Auto-registers workspace                           │  │
+│  │  - Syncs with MCP Manager                             │  │
+│  │  - Updates Cursor mcp.json                            │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                         │                                    │
+│              HTTP API + WebSocket                            │
+│                         │                                    │
+└─────────────────────────┼────────────────────────────────────┘
+                          │
+┌─────────────────────────┼────────────────────────────────────┐
+│              MCP Manager (Desktop App)                        │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  - Process Management                                  │  │
+│  │  - Workspace Isolation (Proxy)                        │  │
+│  │  - Visual Configuration UI                            │  │
+│  │  - Secrets Management (3-level override)              │  │
+│  │  - Permissions System                                 │  │
+│  │  - AI Agent Proxy                                     │  │
+│  │  - MCP Tools (Dynamic Server)                         │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                         │                                    │
+│         ┌────────────────┴────────────────┐                  │
+│         │                                 │                  │
+│  ┌──────▼──────┐                  ┌──────▼──────┐          │
+│  │ MCP Tools   │                  │ MCP Servers │          │
+│  │ (Dynamic)   │                  │ (e.g. this) │          │
+│  └──────┬──────┘                  └──────┬──────┘          │
+│         │                                 │                  │
+└─────────┼─────────────────────────────────┼──────────────────┘
+          │                                 │
+          └────────────┬────────────────────┘
+                       │
+          ┌────────────▼────────────┐
+          │  @tscodex/mcp-sdk       │
+          │  (Core SDK)              │
+          └─────────────────────────┘
+```
+
+### How It Works
+
+**The Problem**: Real projects require each Cursor workspace to work with its own workspace context. For example, this image server needs the root path of the current project to create and work with images. But you can't run a separate server instance for each project.
+
+**The Solution**: **[MCP Manager](https://github.com/unbywyd/tscodex-mcp-manager-app)** allows you to:
+- Run **one server instance** (e.g., `@tscodex/mcp-images`)
+- Create **multiple workspace proxies** that forward requests with workspace context
+- The SDK receives headers from the current workspace and allows one server to work with different workspaces
+
+**The Bridge**: **[MCP Manager Bridge](https://github.com/unbywyd/tscodex-mcp-manager-bridge)** automatically:
+- Registers the workspace in MCP Manager by project path
+- Syncs Cursor with the manager
+- Registers proxy MCP servers in local `mcp.json`
+- Provides perfect encapsulation and connection between workspaces
+
+---
+
+## 🎨 Features
 
 - 🖼️ **Image Processing**: Resize, crop, optimize, convert formats, apply filters, rotate, watermark
 - 🔍 **Stock Image Search**: Search and download images from Pexels and Pixabay
@@ -42,21 +96,46 @@ The extension handles all of this automatically! 🎯
 - 📦 **Multiple Formats**: Support for WebP, JPEG, PNG, AVIF
 - ⚡ **High Performance**: Powered by Sharp for fast image processing
 
-## Installation
+---
 
-```bash
-npm install -g @tscodex/mcp-images
-```
+## 📦 Installation
 
-Or use with npx:
+### Option 1: Standalone (via npx)
 
 ```bash
 npx @tscodex/mcp-images@latest
 ```
 
-## Quick Start
+### Option 2: Global Installation
 
-### 1. Basic Usage
+```bash
+npm install -g @tscodex/mcp-images
+```
+
+### Option 3: Managed Mode (Recommended)
+
+Use with **[MCP Manager](https://github.com/unbywyd/tscodex-mcp-manager-app)** for the best experience:
+
+1. **Install MCP Manager**: Download from [GitHub Releases](https://github.com/unbywyd/tscodex-mcp-manager-app/releases)
+2. **Install Bridge Extension**: [MCP Manager Bridge](https://marketplace.visualstudio.com/items?itemName=unbywyd.mcp-manager-bridge) from VS Code Marketplace
+3. **Add Server**: In MCP Manager, add `@tscodex/mcp-images` as a new server
+4. **Configure**: Use the visual UI to configure the server (JSON Schema-based)
+5. **Enable**: Enable the server for your workspace in Cursor
+
+**Benefits of Managed Mode:**
+- ✅ **Visual Configuration**: No need to edit JSON files manually
+- ✅ **Workspace Isolation**: Each project gets its own workspace proxy
+- ✅ **Secure Secrets**: 3-level secret override (Global → Workspace → Server)
+- ✅ **Permissions Control**: Granular control over what each server can access
+- ✅ **AI Agent Integration**: Use AI agents without exposing API keys to servers
+- ✅ **Token Statistics**: Track AI usage transparently
+- ✅ **Auto-sync**: Bridge automatically syncs with Cursor
+
+---
+
+## 🚀 Quick Start
+
+### Standalone Mode
 
 ```bash
 # Start server with default settings
@@ -65,36 +144,34 @@ npx @tscodex/mcp-images@latest
 # Server will start on port 3848 by default (host: 0.0.0.0)
 # MCP endpoint: http://localhost:3848/mcp
 
-# Start with custom host
-npx @tscodex/mcp-images@latest --host 127.0.0.1
-# or
-npx @tscodex/mcp-images@latest --host=127.0.0.1
-# or short form
-npx @tscodex/mcp-images@latest -h 127.0.0.1
-
-# Start with custom port
-npx @tscodex/mcp-images@latest --port 3000
-# or
-npx @tscodex/mcp-images@latest --port=3000
-# or short form
-npx @tscodex/mcp-images@latest -p 3000
-
-# Combine host and port
+# With custom host and port
 npx @tscodex/mcp-images@latest --host 127.0.0.1 --port 3000
 
-# Get server metadata (for Extension integration)
-npx @tscodex/mcp-images@latest --meta
+# With project root (REQUIRED for standalone mode)
+npx @tscodex/mcp-images@latest --host 127.0.0.1 --port 4040 --root /path/to/project
 
-# Or with npm scripts (from project directory):
-npm start              # Start server
-npm run meta           # Get metadata (recommended)
-npm start -- --meta    # Alternative: use double dash to pass arguments
-npm start -- --host 127.0.0.1 --port 3000  # With custom host and port
+# Get server metadata (for MCP Manager integration)
+npx @tscodex/mcp-images@latest --meta
 ```
 
-### 2. Configuration
+### Managed Mode
 
-Create a configuration file `.mcp-images.json` in your project root:
+1. **Start MCP Manager** desktop application
+2. **Open Cursor** with your project
+3. **Bridge Extension** automatically:
+   - Registers your workspace
+   - Connects to MCP Manager
+   - Syncs enabled servers to Cursor's `mcp.json`
+4. **Enable Server**: Click the play icon on `@tscodex/mcp-images` in the Bridge panel
+5. **Configure**: Use MCP Manager UI to configure the server (if needed)
+
+---
+
+## ⚙️ Configuration
+
+### Configuration File
+
+Create `.mcp-images.json` in your project root:
 
 ```json
 {
@@ -110,128 +187,113 @@ Create a configuration file `.mcp-images.json` in your project root:
 
 **Configuration Options:**
 
-- `root` (string, optional): Project root directory. 
-  - Use `"."` to use `MCP_PROJECT_ROOT` environment variable (requires env var to be set)
-  - Use absolute path (e.g., `"D:\\MyProjects\\my-project"` on Windows or `"/Users/username/my-project"` on macOS/Linux) for standalone server
-  - **Important:** When running as standalone server via CLI, specify `root` via `--root` parameter or set `MCP_PROJECT_ROOT` env var
-- `defaultProvider` (`"pexels"` | `"pixabay"` | `"openai"` | `"auto"`, default: `"auto"`): Default image provider for search
-- `defaultFormat` (`"webp"` | `"jpeg"` | `"png"` | `"avif"`, default: `"webp"`): Default image format for processing
-- `defaultMaxWidth` (number, default: `1920`): Default maximum width for images in pixels (1-10000)
-- `defaultQuality` (number, default: `80`): Default quality for image compression (1-100)
-- `saveMetadata` (boolean, default: `true`): Save JSON metadata file alongside images
-- `embedExif` (boolean, default: `false`): Embed metadata in EXIF data via Sharp
+- `root` (string, optional): Project root directory
+  - Use `"."` to use `MCP_PROJECT_ROOT` environment variable (managed mode)
+  - Use absolute path for standalone mode
+- `defaultProvider` (`"pexels"` | `"pixabay"` | `"openai"` | `"auto"`, default: `"auto"`): Default image provider
+- `defaultFormat` (`"webp"` | `"jpeg"` | `"png"` | `"avif"`, default: `"webp"`): Default image format
+- `defaultMaxWidth` (number, default: `1920`): Default maximum width (1-10000)
+- `defaultQuality` (number, default: `80`): Default quality (1-100)
+- `saveMetadata` (boolean, default: `true`): Save JSON metadata alongside images
+- `embedExif` (boolean, default: `false`): Embed metadata in EXIF data
 
-### 3. API Keys (Secrets)
+### Secrets Management
 
-**⚠️ Security Note:** API keys are stored as **secrets** (environment variables with `SECRET_` prefix) instead of in the configuration file. This is more secure because:
+**⚠️ Security Note:** API keys are stored as **secrets** (environment variables with `SECRET_` prefix) instead of in configuration files.
 
-- **Secrets are not committed to version control** - Configuration files (`.mcp-images.json`) can be accidentally committed to Git, exposing your API keys
-- **Environment variables are process-scoped** - They exist only in the running process and are not persisted to disk
-- **Better separation of concerns** - Configuration (settings) vs Secrets (credentials) are kept separate
-- **Compliance with security best practices** - Follows the principle of never storing credentials in plain text files
-
-API keys are provided via environment variables with `SECRET_` prefix:
-
+**In Standalone Mode:**
 ```bash
-# Pexels API key (for stock image search)
 export SECRET_PEXELS_API_KEY=your_pexels_api_key
-
-# Pixabay API key (for stock image search)
 export SECRET_PIXABAY_API_KEY=your_pixabay_api_key
-
-# OpenAI API key (for AI image generation)
 export SECRET_OPENAI_API_KEY=your_openai_api_key
-
-# OpenAI Organization ID (optional)
-export SECRET_OPENAI_ORGANIZATION_ID=your_org_id
 ```
 
-**Get API Keys:**
+**In Managed Mode:**
+MCP Manager provides a **3-level secret override system**:
+1. **Global**: Secrets available to all servers
+2. **Workspace**: Secrets specific to a workspace
+3. **Server**: Secrets specific to a server instance
 
+This allows fine-grained control over what secrets each server can access.
+
+**Get API Keys:**
 - **Pexels**: https://www.pexels.com/api/
 - **Pixabay**: https://pixabay.com/api/docs/
 - **OpenAI**: https://platform.openai.com/api-keys
 
-### 4. Running with Configuration
+---
 
-**Important:** When running as a standalone server via CLI, you **must** specify the project root path using `--root` parameter or `MCP_PROJECT_ROOT` environment variable. This tells the server where your project files are located.
+## 🔒 Security & Permissions
 
-```bash
-# With config file (root can be specified in config or via --root)
-npx @tscodex/mcp-images
+### Security Features
 
-# With custom host (via CLI argument - takes precedence over env var)
-npx @tscodex/mcp-images --host 127.0.0.1
+**MCP Manager** provides enterprise-grade security:
 
-# With custom port (via CLI argument - takes precedence over env var)
-npx @tscodex/mcp-images --port 3000
+1. **OS Keychain Storage**: Secrets are stored in the operating system's secure keychain (Windows Credential Manager, macOS Keychain, Linux Secret Service)
+2. **No Key Exposure**: API keys are never passed directly to MCP servers. Servers that need AI access use the AI Agent proxy mechanism
+3. **Process Isolation**: Each server runs in its own process with isolated environment
+4. **Permission System**: Granular control over what each server can access
 
-# With custom host and port via environment variables
-MCP_HOST=127.0.0.1 MCP_PORT=3000 npx @tscodex/mcp-images
+### Permissions System
 
-# CLI arguments take precedence over environment variables
-MCP_HOST=0.0.0.0 MCP_PORT=3848 npx @tscodex/mcp-images --host 127.0.0.1 --port 3000
-# Will use host=127.0.0.1, port=3000
+MCP Manager's permission system allows you to configure:
 
-# With project root via CLI (RECOMMENDED for standalone server)
-# Windows:
-npx @tscodex/mcp-images --host 127.0.0.1 --port 4040 --root D:\MyProjects\my-project
-# macOS/Linux:
-npx @tscodex/mcp-images --host 127.0.0.1 --port 4040 --root /Users/username/my-project
+- **Environment Variables**: Which environment variables are available to the server
+- **Secrets Access**: Which secrets the server can access
+- **AI Agent Access**: Whether the server can use the AI Agent proxy
+- **File System Access**: Workspace root access (always scoped to project)
 
-# With project root via environment variable
-# Windows (PowerShell):
-$env:MCP_PROJECT_ROOT="D:\MyProjects\my-project"; npx @tscodex/mcp-images --host 127.0.0.1 --port 4040
-# Windows (CMD):
-set MCP_PROJECT_ROOT=D:\MyProjects\my-project && npx @tscodex/mcp-images --host 127.0.0.1 --port 4040
-# macOS/Linux:
-MCP_PROJECT_ROOT=/Users/username/my-project npx @tscodex/mcp-images --host 127.0.0.1 --port 4040
-
-# Using npm scripts (from project directory):
-# Windows:
-npm run start -- --host=127.0.0.1 --port=4040 --root=D:\MyProjects\my-project
-# macOS/Linux:
-npm run start -- --host=127.0.0.1 --port=4040 --root=/Users/username/my-project
-
-# With API keys
-SECRET_PEXELS_API_KEY=your_key \
-SECRET_PIXABAY_API_KEY=your_key \
-npx @tscodex/mcp-images
-
-# With CLI arguments
-npx @tscodex/mcp-images --default-provider pexels --default-format webp
-
-# With custom config file
-npx @tscodex/mcp-images --config /path/to/config.json
+**Example Permission Configuration:**
+```json
+{
+  "envVars": ["NODE_ENV", "DEBUG"],
+  "secrets": ["SECRET_PEXELS_API_KEY", "SECRET_PIXABAY_API_KEY"],
+  "aiAgent": {
+    "enabled": true,
+    "allowedModels": ["gpt-4", "gpt-3.5-turbo"]
+  }
+}
 ```
 
-### 5. Environment Variables
+---
 
-All environment variables are optional with sensible defaults:
+## 🤖 AI Agent Integration
 
-```bash
-# Server settings
-MCP_PORT=3848              # Server port (default: 3848)
-MCP_HOST=0.0.0.0          # Server host (default: 0.0.0.0)
-MCP_PATH=/mcp             # MCP endpoint path (default: /mcp)
-MCP_PROJECT_ROOT=/path     # Project root directory
+MCP Manager includes a built-in **AI Agent** that:
 
-# Configuration (alternative to config file)
-DEFAULT_PROVIDER=pexels
-DEFAULT_FORMAT=webp
-DEFAULT_MAX_WIDTH=1920
-DEFAULT_QUALITY=80
-SAVE_METADATA=true
-EMBED_EXIF=false
+1. **Registers OpenAI-compatible APIs**: Configure via `baseUrl` and API key
+2. **Provides Proxy**: Servers can use AI without direct API key access
+3. **Token Statistics**: Track all AI usage transparently
+4. **Permission-Based**: Each server must have AI Agent access enabled in permissions
 
-# API Keys (required for stock images and AI generation)
-SECRET_PEXELS_API_KEY=your_key
-SECRET_PIXABAY_API_KEY=your_key
-SECRET_OPENAI_API_KEY=your_key
-SECRET_OPENAI_ORGANIZATION_ID=your_org_id
-```
+**How It Works:**
 
-## Available Tools
+1. **Register AI Provider** in MCP Manager:
+   - Base URL: `https://api.openai.com/v1`
+   - API Key: (stored securely in OS keychain)
+   - Model: `gpt-4`, `gpt-3.5-turbo`, etc.
+
+2. **Enable for Server**: In server permissions, enable AI Agent access
+
+3. **Use in Server**: The SDK provides methods to access the AI Agent:
+   ```typescript
+   const aiResponse = await server.getAiAgent().chat({
+     model: 'gpt-4',
+     messages: [{ role: 'user', content: 'Generate image prompt' }]
+   });
+   ```
+
+4. **Track Usage**: All token usage is tracked and displayed in MCP Manager
+
+**Benefits:**
+- ✅ No API keys exposed to servers
+- ✅ Centralized AI usage tracking
+- ✅ Easy to switch AI providers
+- ✅ Cost monitoring
+
+---
+
+## 🛠️ Available Tools
 
 ### Image Processing
 
@@ -260,7 +322,9 @@ SECRET_OPENAI_ORGANIZATION_ID=your_org_id
 - `image_extract_colors_local` - Extract dominant colors and color palette from local image
 - `generate_color_palette_image` - Generate visual color palette image from local image
 
-## Example Usage
+---
+
+## 📚 Example Usage
 
 ### Example 1: Search and Download Stock Image
 
@@ -298,50 +362,58 @@ SECRET_OPENAI_ORGANIZATION_ID=your_org_id
 # Format: webp
 ```
 
-### Example 4: Extract Colors
+---
+
+## 🔧 Environment Variables
+
+All environment variables are optional with sensible defaults:
 
 ```bash
-# Tool: image_extract_colors_local
-# Image Path: public/images/hero.webp
+# Server settings
+MCP_PORT=3848              # Server port (default: 3848)
+MCP_HOST=0.0.0.0          # Server host (default: 0.0.0.0)
+MCP_PATH=/mcp             # MCP endpoint path (default: /mcp)
+MCP_PROJECT_ROOT=/path     # Project root directory
 
-# Returns:
-# - Dominant color (HEX, RGB)
-# - Color palette (vibrant, muted, dark/light variants)
-# - Visual palette image
+# Configuration (alternative to config file)
+DEFAULT_PROVIDER=pexels
+DEFAULT_FORMAT=webp
+DEFAULT_MAX_WIDTH=1920
+DEFAULT_QUALITY=80
+SAVE_METADATA=true
+EMBED_EXIF=false
+
+# API Keys (required for stock images and AI generation)
+SECRET_PEXELS_API_KEY=your_key
+SECRET_PIXABAY_API_KEY=your_key
+SECRET_OPENAI_API_KEY=your_key
+SECRET_OPENAI_ORGANIZATION_ID=your_org_id
 ```
 
-## Configuration Priority
+---
 
-Configuration is loaded from multiple sources with the following priority:
+## 🏗️ Built on @tscodex/mcp-sdk
 
-1. **CLI Arguments** (highest priority)
-   ```bash
-   npx @tscodex/mcp-images --default-provider pexels
-   ```
+This project is built on top of **[@tscodex/mcp-sdk](https://www.npmjs.com/package/@tscodex/mcp-sdk)**, which provides:
 
-2. **Environment Variables**
-   ```bash
-   DEFAULT_PROVIDER=pexels npx @tscodex/mcp-images
-   ```
+- ✅ **MCP Server Infrastructure**: HTTP transport, protocol handling, request routing
+- ✅ **Authentication & Session Management**: Secure session handling
+- ✅ **Configuration Loading**: CLI args, env vars, config files with priority system
+- ✅ **Secrets Management**: `SECRET_*` environment variable handling
+- ✅ **Workspace Context**: Automatic workspace root detection and header handling
+- ✅ **AI Agent Integration**: Built-in support for AI Agent proxy
+- ✅ **Type Safety**: Full TypeScript support with TypeBox schemas
 
-3. **Config File** (`.mcp-images.json`)
-   ```json
-   {
-     "defaultProvider": "pexels"
-   }
-   ```
+**Key Features of the SDK:**
+- Fast HTTP-based MCP server creation
+- No database required - stateless design
+- Works with or without MCP Manager
+- Automatic workspace context from headers
+- JSON Schema-based configuration
 
-4. **Schema Defaults** (lowest priority)
-   - Defined in TypeBox schema
+---
 
-## Development
-
-This project is built on top of [@tscodex/mcp-sdk](https://www.npmjs.com/package/@tscodex/mcp-sdk), which provides:
-- MCP server infrastructure and protocol handling
-- Authentication and session management
-- Configuration loading (CLI args, env vars, config files)
-- Secrets management (SECRET_* environment variables)
-- HTTP transport and request handling
+## 🧪 Development
 
 ```bash
 # Clone repository
@@ -359,9 +431,14 @@ npm run dev
 
 # Run production build
 npm start
+
+# Get metadata (for MCP Manager)
+npm run meta
 ```
 
-## Project Structure
+---
+
+## 📁 Project Structure
 
 ```
 cursor-stock-images-mcp-v2/
@@ -387,22 +464,43 @@ cursor-stock-images-mcp-v2/
 └── README.md
 ```
 
-## Requirements
+---
+
+## 📋 Requirements
 
 - Node.js >= 18.0.0
 - API keys for providers (optional, but required for stock images and AI generation)
 
-## License
+---
+
+## 🔗 Related Projects
+
+- **[MCP Manager](https://github.com/unbywyd/tscodex-mcp-manager-app)** - Desktop application for MCP server management
+- **[MCP Manager Bridge](https://github.com/unbywyd/tscodex-mcp-manager-bridge)** - VS Code/Cursor extension bridge
+- **[@tscodex/mcp-sdk](https://www.npmjs.com/package/@tscodex/mcp-sdk)** - SDK for building MCP servers
+- **[MCP Images (this project)](https://github.com/unbywyd/tscodex-mcp-images)** - Image processing MCP server
+
+---
+
+## 📄 License
 
 MIT
 
-## Author
+---
+
+## 👤 Author
 
 [unbywyd](https://github.com/unbywyd)
 
-## Links
+**Website**: [tscodex.com](https://tscodex.com)
+
+---
+
+## 🔗 Links
 
 - **GitHub**: https://github.com/unbywyd/tscodex-mcp-images
 - **NPM**: https://www.npmjs.com/package/@tscodex/mcp-images
 - **Issues**: https://github.com/unbywyd/tscodex-mcp-images/issues
 - **MCP SDK**: https://www.npmjs.com/package/@tscodex/mcp-sdk
+- **MCP Manager**: https://github.com/unbywyd/tscodex-mcp-manager-app
+- **MCP Bridge**: https://github.com/unbywyd/tscodex-mcp-manager-bridge

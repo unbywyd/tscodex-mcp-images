@@ -3,7 +3,26 @@ import { Type, type Static } from '@sinclair/typebox';
 import { Config } from '../config.js';
 import { ProviderManager } from '../providers/manager.js';
 import { processAndSaveImage, imageToBase64 } from '../image-processor.js';
-import { findProjectRoot } from '../image-processor.js';
+
+/**
+ * Get project root from context
+ * Priority:
+ * 1. context.projectRoot (from SDK, set via X-MCP-Project-Root header)
+ * 2. config.root (fallback from configuration file)
+ * 3. Error if neither is available
+ */
+function getProjectRoot(context: { projectRoot?: string; config: Config }): string {
+  const projectRoot = context.projectRoot || context.config.root;
+  if (!projectRoot) {
+    throw new Error(
+      'Project root is not set. Either:\n' +
+      '1. The MCP client should provide project root via X-MCP-Project-Root header, or\n' +
+      '2. Set "root" in .mcp-images.json configuration file.\n' +
+      'If using Cursor, make sure the workspace is properly configured.'
+    );
+  }
+  return projectRoot;
+}
 
 /**
  * Register AI generation tools
@@ -33,11 +52,11 @@ export function registerAIGenerationTools(
 
   server.addTool({
     name: 'ai_generate_image',
-    description: 'Generate image using OpenAI DALL-E AI. IMPORTANT: This is a PAID service - each generation costs money. Image is generated at exact requested size (no resizing needed). Requires OpenAI API key to be configured. If targetPath is provided, the image will be automatically downloaded and saved to the project. IMPORTANT: Before using this tool, verify the current project root is correct (check config://current resource or get_config prompt). All paths are resolved relative to the project root.',
+    description: 'Generate image using OpenAI DALL-E AI. IMPORTANT: This is a PAID service - each generation costs money. Image is generated at exact requested size (no resizing needed). Requires OpenAI API key to be configured. If targetPath is provided, the image will be automatically downloaded and saved to the project. All paths are relative to the project root.',
     schema: GenerateImageSchema,
     handler: async (params: Static<typeof GenerateImageSchema>, context) => {
       const config = context.config;
-      const projectRoot = context.projectRoot || (await findProjectRoot(config.root || '.')).root;
+      const projectRoot = getProjectRoot(context);
       const providerManager = getProviderManager();
 
       // Check OpenAI availability

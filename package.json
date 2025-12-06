@@ -1,6 +1,6 @@
 {
   "name": "@tscodex/mcp-images",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "MCP server with comprehensive image processing tools - resize, crop, optimize, extract colors, apply filters, create placeholders and more. Optional integration with Pexels and Pixabay for image search and download.",
   "type": "module",
   "main": "./dist/index.js",
@@ -47,7 +47,7 @@
   "homepage": "https://github.com/unbywyd/tscodex-mcp-images#readme",
   "dependencies": {
     "@sinclair/typebox": "^0.34.41",
-    "@tscodex/mcp-sdk": "^0.0.2",
+    "@tscodex/mcp-sdk": "^0.0.6",
     "node-fetch": "^3.3.2",
     "node-vibrant": "^4.0.3",
     "picocolors": "^1.1.1",

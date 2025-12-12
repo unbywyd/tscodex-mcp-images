@@ -25,7 +25,7 @@ const RawConfigSchema = Type.Object({
     description: 'Default maximum width for images in pixels'
   }),
   defaultQuality: Type.Number({
-    default: 80,
+    default: 100,
     minimum: 1,
     maximum: 100,
     description: 'Default quality for image compression (1-100)'

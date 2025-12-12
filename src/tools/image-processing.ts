@@ -65,7 +65,7 @@ export function registerImageProcessingTools(
     height: Type.Optional(Type.Number({ minimum: 1, maximum: 4000, description: 'Exact height in pixels' })),
     maxWidth: Type.Optional(Type.Number({ minimum: 1, maximum: 4000, description: 'Maximum width in pixels (maintains aspect ratio)' })),
     aspectRatio: Type.Optional(Type.String({ pattern: '^\\d+:\\d+$', description: 'Aspect ratio in format "width:height" (e.g., "16:9", "1:1")' })),
-    quality: Type.Optional(Type.Number({ minimum: 1, maximum: 100, default: 80, description: 'Image quality (1-100)' })),
+    quality: Type.Optional(Type.Number({ minimum: 1, maximum: 100, default: 100, description: 'Image quality (1-100). Default: 100 (no compression loss)' })),
     circle: Type.Optional(Type.Boolean({ default: false, description: 'Crop image to circle shape. Image will be cropped to square first, then masked as circle. Output format will be PNG with transparency.' }))
   });
 
@@ -205,7 +205,7 @@ export function registerImageProcessingTools(
     imagePath: Type.String({ description: 'Path to local image file (relative to project root)' }),
     outputPath: Type.Optional(Type.String({ description: 'Output path (relative to project root). If not specified, overwrites original file' })),
     maxWidth: Type.Optional(Type.Number({ minimum: 1, maximum: 4000, description: 'Maximum width in pixels (optional, for resizing large images)' })),
-    quality: Type.Optional(Type.Number({ minimum: 1, maximum: 100, default: 85, description: 'Target quality (1-100). Lower values = smaller files' }))
+    quality: Type.Optional(Type.Number({ minimum: 1, maximum: 100, default: 100, description: 'Target quality (1-100). Default: 100. Lower values = smaller files' }))
   });
 
   server.addTool({

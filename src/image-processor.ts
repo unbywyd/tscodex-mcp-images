@@ -110,7 +110,7 @@ export async function createConfigFile(directory: string): Promise<void> {
     root: '.',
     defaultFormat: 'webp',
     defaultMaxWidth: 1920,
-    defaultQuality: 80,
+    defaultQuality: 100,
     saveMetadata: true,
     embedExif: false,
   };
@@ -168,9 +168,9 @@ export async function processAndSaveImage(
 
   // Priority: exact dimensions > aspect ratio > maxWidth
   if (exactWidth && exactHeight) {
-    // Exact dimensions: crop/resize to specified dimensions
+    // Exact dimensions: crop to fit (preserves aspect ratio, crops excess)
     sharpInstance = sharpInstance.resize(exactWidth, exactHeight, {
-      fit: 'fill', // exact match to dimensions (may crop or stretch)
+      fit: 'cover', // preserves aspect ratio, crops to fill dimensions
       withoutEnlargement: false, // allow enlargement if needed
     });
   } else if (exactWidth) {
@@ -216,7 +216,7 @@ export async function processAndSaveImage(
     // After cropping calculate final dimensions considering maxWidth
     const finalHeight = Math.round(maxWidth / targetRatio);
     sharpInstance = sharpInstance.resize(maxWidth, finalHeight, {
-      fit: 'fill', // exact match to dimensions
+      fit: 'cover', // preserves aspect ratio
       withoutEnlargement: true,
     });
   } else {
@@ -438,7 +438,7 @@ export async function processLocalImage(
   // Priority: exact dimensions > aspect ratio > maxWidth
   if (exactWidth && exactHeight) {
     sharpInstance = sharpInstance.resize(exactWidth, exactHeight, {
-      fit: 'fill',
+      fit: 'cover', // preserves aspect ratio, crops to fill dimensions
       withoutEnlargement: false,
     });
   } else if (exactWidth) {
@@ -474,7 +474,7 @@ export async function processLocalImage(
 
     const finalHeight = Math.round(maxWidth / targetRatio);
     sharpInstance = sharpInstance.resize(maxWidth, finalHeight, {
-      fit: 'fill',
+      fit: 'cover', // preserves aspect ratio
       withoutEnlargement: true,
     });
   } else {
@@ -720,7 +720,7 @@ export async function optimizeImage(
   const result = await processLocalImage(imageBuffer, outputPath, config, {
     format: bestFormat,
     maxWidth: options.maxWidth,
-    quality: options.quality || 85,
+    quality: options.quality || config.defaultQuality,
   });
 
   const savingsPercent = ((result.savedBytes / originalSize) * 100).toFixed(1);

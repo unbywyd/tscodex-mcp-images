@@ -66,7 +66,7 @@ export function registerImageProcessingTools(
     width: Type.Optional(Type.Number({ minimum: 1, maximum: 4000, description: 'Exact width in pixels' })),
     height: Type.Optional(Type.Number({ minimum: 1, maximum: 4000, description: 'Exact height in pixels' })),
     maxWidth: Type.Optional(Type.Number({ minimum: 1, maximum: 4000, description: 'Maximum width in pixels (maintains aspect ratio)' })),
-    aspectRatio: Type.Optional(Type.String({ pattern: '^\\d+:\\d+$', description: 'Aspect ratio in format "width:height" (e.g., "16:9", "1:1")' })),
+    aspectRatio: Type.Optional(Type.String({ pattern: '^\\d+(\\.\\d+)?:\\d+(\\.\\d+)?$', description: 'Aspect ratio in format "width:height" (e.g., "16:9", "1:1", "1.91:1")' })),
     quality: Type.Optional(Type.Number({ minimum: 1, maximum: 100, default: 100, description: 'Image quality (1-100). Default: 100 (no compression loss)' })),
     circle: Type.Optional(Type.Boolean({ default: false, description: 'Crop image to circle shape. Image will be cropped to square first, then masked as circle. Output format will be PNG with transparency.' }))
   });

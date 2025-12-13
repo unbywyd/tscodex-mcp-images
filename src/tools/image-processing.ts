@@ -11,10 +11,11 @@ import {
   addWatermark,
   applyFilters,
   rotateImage,
-  cropImage
+  cropImage,
+  resolvePathSafe,
+  normalizePath
 } from '../image-processor.js';
 import { readFile } from 'fs/promises';
-import { resolve } from 'path';
 
 // Helper function to format file size
 function formatFileSize(bytes: number): string {
@@ -40,7 +41,8 @@ function getProjectRoot(context: { projectRoot?: string; config: Config }): stri
       'If using Cursor, make sure the workspace is properly configured.'
     );
   }
-  return projectRoot;
+  // Normalize Unicode for Cyrillic and other non-ASCII paths
+  return normalizePath(projectRoot);
 }
 
 /**
@@ -77,8 +79,8 @@ export function registerImageProcessingTools(
       const config = context.config;
       const projectRoot = getProjectRoot(context);
 
-      const fullInputPath = resolve(projectRoot, params.imagePath);
-      let outputFilePath = params.outputPath ? resolve(projectRoot, params.outputPath) : fullInputPath;
+      const fullInputPath = resolvePathSafe(projectRoot, params.imagePath);
+      let outputFilePath = params.outputPath ? resolvePathSafe(projectRoot, params.outputPath) : fullInputPath;
       
       // If circle needed, ensure .png extension
       if (params.circle && !outputFilePath.toLowerCase().endsWith('.png')) {
@@ -148,7 +150,7 @@ export function registerImageProcessingTools(
       const config = context.config;
       const projectRoot = getProjectRoot(context);
 
-      const fullPath = resolve(projectRoot, params.imagePath);
+      const fullPath = resolvePathSafe(projectRoot, params.imagePath);
 
       // Check file existence
       const fs = await import('fs/promises');
@@ -216,8 +218,8 @@ export function registerImageProcessingTools(
       const config = context.config;
       const projectRoot = getProjectRoot(context);
 
-      const fullInputPath = resolve(projectRoot, params.imagePath);
-      const outputFilePath = params.outputPath ? resolve(projectRoot, params.outputPath) : fullInputPath;
+      const fullInputPath = resolvePathSafe(projectRoot, params.imagePath);
+      const outputFilePath = params.outputPath ? resolvePathSafe(projectRoot, params.outputPath) : fullInputPath;
 
       // Check file existence
       const fs = await import('fs/promises');
@@ -283,7 +285,7 @@ export function registerImageProcessingTools(
       const projectRoot = getProjectRoot(context);
 
       const result = await createPlaceholderImage(
-        resolve(projectRoot, params.outputPath),
+        resolvePathSafe(projectRoot, params.outputPath),
         config,
         {
           width: params.width,
@@ -331,7 +333,7 @@ export function registerImageProcessingTools(
       const config = context.config;
       const projectRoot = getProjectRoot(context);
 
-      const fullImagePath = resolve(projectRoot, params.imagePath);
+      const fullImagePath = resolvePathSafe(projectRoot, params.imagePath);
 
       // Check file existence
       const fs = await import('fs/promises');
@@ -345,9 +347,9 @@ export function registerImageProcessingTools(
       const imageBuffer = await readFile(fullImagePath);
 
       // Create favicon
-      const result = await createFavicon(imageBuffer, params.outputDir, config, {
+      const result = await createFavicon(imageBuffer, normalizePath(params.outputDir), config, {
         sizes: params.sizes,
-        projectRoot,
+        projectRoot: normalizePath(projectRoot),
         appName: params.appName,
         themeColor: params.themeColor,
         backgroundColor: params.backgroundColor,

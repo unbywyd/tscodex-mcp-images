@@ -3,8 +3,7 @@ import { Type, type Static } from '@sinclair/typebox';
 import { Config } from '../config.js';
 import { ProviderManager } from '../providers/manager.js';
 import { EImageProvider } from '../types.js';
-import { processAndSaveImage, imageToBase64 } from '../image-processor.js';
-import { resolve } from 'path';
+import { processAndSaveImage, imageToBase64, normalizePath } from '../image-processor.js';
 
 /**
  * Get project root from context
@@ -23,7 +22,8 @@ function getProjectRoot(context: { projectRoot?: string; config: Config }): stri
       'If using Cursor, make sure the workspace is properly configured.'
     );
   }
-  return projectRoot;
+  // Normalize Unicode for Cyrillic and other non-ASCII paths
+  return normalizePath(projectRoot);
 }
 
 /**

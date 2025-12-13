@@ -2,8 +2,8 @@ import { McpServer } from '@tscodex/mcp-sdk';
 import { Type, type Static } from '@sinclair/typebox';
 import { Config } from '../config.js';
 import { extractColors, generateColorPaletteImage } from '../color-extractor.js';
+import { resolvePathSafe, normalizePath } from '../image-processor.js';
 import { readFile, writeFile } from 'fs/promises';
-import { resolve } from 'path';
 
 /**
  * Get project root from context
@@ -22,7 +22,8 @@ function getProjectRoot(context: { projectRoot?: string; config: Config }): stri
       'If using Cursor, make sure the workspace is properly configured.'
     );
   }
-  return projectRoot;
+  // Normalize Unicode for Cyrillic and other non-ASCII paths
+  return normalizePath(projectRoot);
 }
 
 /**
@@ -41,7 +42,7 @@ export function registerColorExtractionTools(server: McpServer<Config>) {
     handler: async (params: Static<typeof ExtractColorsSchema>, context) => {
       const projectRoot = getProjectRoot(context);
 
-      const fullPath = resolve(projectRoot, params.imagePath);
+      const fullPath = resolvePathSafe(projectRoot, params.imagePath);
 
       // Check file existence
       const fs = await import('fs/promises');
@@ -124,8 +125,8 @@ export function registerColorExtractionTools(server: McpServer<Config>) {
     handler: async (params: Static<typeof GeneratePaletteSchema>, context) => {
       const projectRoot = getProjectRoot(context);
 
-      const fullImagePath = resolve(projectRoot, params.imagePath);
-      const fullOutputPath = resolve(projectRoot, params.outputPath);
+      const fullImagePath = resolvePathSafe(projectRoot, params.imagePath);
+      const fullOutputPath = resolvePathSafe(projectRoot, params.outputPath);
 
       // Check file existence
       const fs = await import('fs/promises');

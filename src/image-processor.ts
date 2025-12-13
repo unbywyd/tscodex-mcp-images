@@ -1,8 +1,31 @@
 import sharp from 'sharp';
 import { writeFile, mkdir, readFile } from 'fs/promises';
-import { dirname, join, resolve } from 'path';
+import { dirname, join, resolve, normalize } from 'path';
 import { UniversalPhoto, ImageFormat, EImageProvider } from './types.js';
 import { Config } from './config.js';
+
+/**
+ * Normalize file path for cross-platform compatibility
+ * Handles Unicode normalization (NFC) for Cyrillic and other non-ASCII characters
+ * This fixes issues with file paths containing Cyrillic characters on Windows
+ */
+export function normalizePath(inputPath: string): string {
+  // Normalize Unicode to NFC form (composed characters)
+  // This is critical for Cyrillic file names on Windows
+  const normalizedUnicode = inputPath.normalize('NFC');
+
+  // Use path.normalize to handle slashes and relative paths
+  return normalize(normalizedUnicode);
+}
+
+/**
+ * Resolve path with Unicode normalization
+ * Use this instead of path.resolve() for paths that may contain non-ASCII characters
+ */
+export function resolvePathSafe(...paths: string[]): string {
+  const normalizedPaths = paths.map(p => p.normalize('NFC'));
+  return normalize(resolve(...normalizedPaths));
+}
 
 /**
  * Determine image format from path or parameter
@@ -155,7 +178,7 @@ export async function processAndSaveImage(
   // Determine project root
   const projectRootResult = await findProjectRoot(config.root);
   const projectRoot = projectRootResult.root;
-  const fullPath = resolve(projectRoot, targetPath);
+  const fullPath = resolvePathSafe(projectRoot, targetPath);
 
   // Get original image dimensions
   const metadata = await sharp(buffer).metadata();
@@ -424,7 +447,7 @@ export async function processLocalImage(
   // Determine project root
   const projectRootResult = await findProjectRoot(config.root);
   const projectRoot = projectRootResult.root;
-  const fullPath = resolve(projectRoot, targetPath);
+  const fullPath = resolvePathSafe(projectRoot, targetPath);
 
   // Get original image dimensions
   const metadata = await sharp(imageBuffer).metadata();
@@ -782,7 +805,7 @@ export async function createPlaceholderImage(
   // Determine project root
   const projectRootResult = await findProjectRoot(config.root);
   const projectRoot = projectRootResult.root;
-  const fullPath = resolve(projectRoot, targetPath);
+  const fullPath = resolvePathSafe(projectRoot, targetPath);
 
   let processedBuffer: Buffer;
 
@@ -927,7 +950,7 @@ export async function createFavicon(
   faviconPath?: string;
 }> {
   const projectRoot = options.projectRoot || (await findProjectRoot(config.root)).root;
-  const fullOutputDir = resolve(projectRoot, outputDir);
+  const fullOutputDir = resolvePathSafe(projectRoot, outputDir);
 
   // Standard favicon sizes
   const defaultSizes = [16, 32, 48, 180, 192, 512];
@@ -959,7 +982,7 @@ export async function createFavicon(
   // Generate each size
   for (const size of sizes) {
     const fileName = `favicon-${size}x${size}.png`;
-    const filePath = resolve(fullOutputDir, fileName);
+    const filePath = resolvePathSafe(fullOutputDir, fileName);
     const relativePath = `${outputDir}/${fileName}`.replace(/\\/g, '/'); // Normalize path for HTML
 
     // Resize and save
@@ -991,7 +1014,7 @@ export async function createFavicon(
     .png({ compressionLevel: 9 })
     .toBuffer();
 
-  const faviconPath = resolve(fullOutputDir, 'favicon.png');
+  const faviconPath = resolvePathSafe(fullOutputDir, 'favicon.png');
   await writeFile(faviconPath, favicon32Buffer);
 
   const relativeFaviconPath = `${outputDir}/favicon.png`.replace(/\\/g, '/'); // Normalize path for HTML
@@ -999,7 +1022,7 @@ export async function createFavicon(
 
   // Generate site.webmanifest for PWA (if sizes 192 and 512 are present)
   if (sizes.includes(192) && sizes.includes(512)) {
-    const manifestPath = resolve(fullOutputDir, 'site.webmanifest');
+    const manifestPath = resolvePathSafe(fullOutputDir, 'site.webmanifest');
     const relativeManifestPath = `${outputDir}/site.webmanifest`.replace(/\\/g, '/');
 
     const manifest = {
@@ -1097,8 +1120,8 @@ export async function addWatermark(
   height: number;
 }> {
   const projectRoot = options.projectRoot || (await findProjectRoot(config.root)).root;
-  const fullImagePath = resolve(projectRoot, imagePath);
-  const fullOutputPath = resolve(projectRoot, outputPath);
+  const fullImagePath = resolvePathSafe(projectRoot, imagePath);
+  const fullOutputPath = resolvePathSafe(projectRoot, outputPath);
 
   // Check if source image exists
   const fs = await import('fs/promises');
@@ -1164,7 +1187,7 @@ export async function addWatermark(
     watermarkBuffer = Buffer.from(svg);
   } else if (options.watermarkImagePath) {
     // Image watermark
-    const fullWatermarkPath = resolve(projectRoot, options.watermarkImagePath);
+    const fullWatermarkPath = resolvePathSafe(projectRoot, options.watermarkImagePath);
 
     try {
       await fs.access(fullWatermarkPath);
@@ -1374,8 +1397,8 @@ export async function applyFilters(
   appliedFilters: string[];
 }> {
   const projectRoot = options.projectRoot || (await findProjectRoot(config.root)).root;
-  const fullImagePath = resolve(projectRoot, imagePath);
-  const fullOutputPath = resolve(projectRoot, outputPath);
+  const fullImagePath = resolvePathSafe(projectRoot, imagePath);
+  const fullOutputPath = resolvePathSafe(projectRoot, outputPath);
 
   // Check if source image exists
   const fs = await import('fs/promises');
@@ -1535,8 +1558,8 @@ export async function rotateImage(
   angle: number;
 }> {
   const projectRoot = options.projectRoot || (await findProjectRoot(config.root)).root;
-  const fullImagePath = resolve(projectRoot, imagePath);
-  const fullOutputPath = resolve(projectRoot, outputPath);
+  const fullImagePath = resolvePathSafe(projectRoot, imagePath);
+  const fullOutputPath = resolvePathSafe(projectRoot, outputPath);
 
   // Check if source image exists
   const fs = await import('fs/promises');
@@ -1635,8 +1658,8 @@ export async function cropImage(
   };
 }> {
   const projectRoot = options.projectRoot || (await findProjectRoot(config.root)).root;
-  const fullImagePath = resolve(projectRoot, imagePath);
-  const fullOutputPath = resolve(projectRoot, outputPath);
+  const fullImagePath = resolvePathSafe(projectRoot, imagePath);
+  const fullOutputPath = resolvePathSafe(projectRoot, outputPath);
 
   // Check if source image exists
   const fs = await import('fs/promises');

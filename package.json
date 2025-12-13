@@ -1,6 +1,6 @@
 {
   "name": "@tscodex/mcp-images",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "MCP server with comprehensive image processing tools - resize, crop, optimize, extract colors, apply filters, create placeholders and more. Optional integration with Pexels and Pixabay for image search and download.",
   "type": "module",
   "main": "./dist/index.js",

@@ -603,5 +603,122 @@ export function registerImageProcessingTools(
       };
     }
   });
+
+  // image_save_from_buffer
+  const SaveFromBufferSchema = Type.Object({
+    imageData: Type.String({ description: 'Base64 encoded image data (with or without data URI prefix like "data:image/png;base64,...") or binary data as base64 string' }),
+    outputPath: Type.String({ description: 'Output path relative to project root (e.g., "screenshots/01-splash/screenshot.png")' }),
+    format: Type.Optional(Type.Union([
+      Type.Literal('png'),
+      Type.Literal('jpeg'),
+      Type.Literal('jpg'),
+      Type.Literal('webp'),
+      Type.Literal('avif')
+    ], { description: 'Output format. If not specified, determined from outputPath extension' })),
+    mimeType: Type.Optional(Type.String({ description: 'MIME type of input image (e.g., "image/png", "image/jpeg"). Optional, will be detected from data URI prefix or image data if not provided' })),
+    quality: Type.Optional(Type.Number({ minimum: 1, maximum: 100, description: 'Image quality (1-100) for lossy formats (jpeg, webp, avif). Default: 100' }))
+  });
+
+  server.addTool({
+    name: 'image_save_from_buffer',
+    description: 'Save image from binary data (base64 string or buffer) to local file system. Useful for saving images received from other APIs or services. All paths are relative to the project root.',
+    schema: SaveFromBufferSchema,
+    handler: async (params: Static<typeof SaveFromBufferSchema>, context) => {
+      const config = context.config;
+      const projectRoot = getProjectRoot(context);
+
+      const { imageData, outputPath, format, mimeType, quality } = params;
+
+      // Extract base64 data - remove data URI prefix if present
+      // Supports formats like: "data:image/png;base64,iVBORw0KGgo..." or plain base64
+      let base64Data = imageData;
+      let detectedMimeType = mimeType;
+
+      if (imageData.includes(',')) {
+        // Has data URI prefix
+        const parts = imageData.split(',');
+        base64Data = parts[1];
+
+        // Extract MIME type from data URI if not provided
+        if (!detectedMimeType) {
+          const match = parts[0].match(/data:([^;]+)/);
+          if (match) {
+            detectedMimeType = match[1];
+          }
+        }
+      }
+
+      // Convert base64 to Buffer
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+
+      // Validate that buffer is not empty
+      if (imageBuffer.length === 0) {
+        throw new Error('Invalid image data: buffer is empty after base64 decoding');
+      }
+
+      // Determine output format from parameter or file extension
+      const path = await import('path');
+      const ext = path.extname(outputPath).slice(1).toLowerCase();
+      const outputFormat = format === 'jpg' ? 'jpeg' : (format || (ext === 'jpg' ? 'jpeg' : ext) || 'png');
+
+      // Build full output path
+      const fullOutputPath = resolvePathSafe(projectRoot, outputPath);
+
+      // Create directory if it doesn't exist
+      const fs = await import('fs/promises');
+      const dir = path.dirname(fullOutputPath);
+      await fs.mkdir(dir, { recursive: true });
+
+      // Process image with sharp
+      const sharp = (await import('sharp')).default;
+      let sharpInstance = sharp(imageBuffer);
+
+      const originalSize = imageBuffer.length;
+
+      // Convert to output format
+      const outputQuality = quality || config.defaultQuality || 100;
+
+      switch (outputFormat) {
+        case 'jpeg':
+          sharpInstance = sharpInstance.jpeg({ quality: outputQuality });
+          break;
+        case 'png':
+          sharpInstance = sharpInstance.png();
+          break;
+        case 'webp':
+          sharpInstance = sharpInstance.webp({ quality: outputQuality });
+          break;
+        case 'avif':
+          sharpInstance = sharpInstance.avif({ quality: outputQuality });
+          break;
+        default:
+          sharpInstance = sharpInstance.png();
+      }
+
+      // Save file
+      const outputBuffer = await sharpInstance.toBuffer();
+      await fs.writeFile(fullOutputPath, outputBuffer);
+
+      // Get output metadata
+      const outputMetadata = await sharp(outputBuffer).metadata();
+
+      // Build response
+      let responseText = `✅ Image Saved Successfully\n\n`;
+      responseText += `**Output:** ${outputPath}\n`;
+      responseText += `**Full Path:** ${fullOutputPath}\n\n`;
+      responseText += `**Details:**\n`;
+      responseText += `   • Format: ${(outputMetadata.format || outputFormat).toUpperCase()}\n`;
+      responseText += `   • Dimensions: ${outputMetadata.width}x${outputMetadata.height}px\n`;
+      responseText += `   • Input Size: ${formatFileSize(originalSize)}\n`;
+      responseText += `   • Output Size: ${formatFileSize(outputBuffer.length)}\n`;
+      if (detectedMimeType) {
+        responseText += `   • Source MIME: ${detectedMimeType}\n`;
+      }
+
+      return {
+        content: [{ type: 'text', text: responseText }]
+      };
+    }
+  });
 }
 
